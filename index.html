@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>IdentityV 参加型メンバー自動調整</title>
+  <meta name="description" content="第5人格の参加型配信用：サバ4＋ハン1の自動抽選＆平均化。新規優先・手動修正・一括削除・2試合同時対応。">
+
+  <style>
+    /* ===== ベース（ライト/ダーク自動切替） ===== */
+    :root{
+      --bg:#f6f7fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
+      --primary:#2563eb;--primary-fg:#ffffff;--danger:#dc2626;--ring:rgba(37,99,235,.25);
+      --chip:#fff;--shadow:0 1px 2px rgba(0,0,0,.04)
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1020;--card:#121933;--text:#e6e8ee;--muted:#a5adcc;--border:#27304f;
+        --primary:#4f7cff;--primary-fg:#0b1020;--danger:#ff6b6b;--ring:rgba(79,124,255,.35);
+        --chip:#1b2342;--shadow:0 1px 2px rgba(0,0,0,.5)
+      }
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+      line-height:1.6;
+    }
+    .container{max-width:1100px;margin:0 auto;padding:20px 16px 96px}
+    h1{margin:0 0 6px;font-size:clamp(20px,3vw,28px)}
+    h3{margin:0 0 8px;font-size:clamp(16px,2.2vw,18px)}
+    .muted{color:var(--muted)}
+    .grid{display:grid;gap:16px}
+    @media(min-width:900px){.grid-2{grid-template-columns:1fr 1fr}}
+
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;
+      box-shadow:var(--shadow)
+    }
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    input[type="text"],select,input[type="number"]{
+      border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff10;
+      font-size:16px;outline:none;min-height:44px
+    }
+    input:focus,select:focus{box-shadow:0 0 0 4px var(--ring);border-color:var(--primary)}
+    .btn{
+      border:1px solid var(--border);background:var(--card);border-radius:10px;
+      padding:10px 12px;cursor:pointer;font-size:15px;min-height:44px
+    }
+    .btn:hover{background:color-mix(in oklab, var(--card), var(--text) 3%)}
+    .btn-primary{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+    .btn-primary:hover{filter:brightness(.97)}
+    .btn-danger{color:var(--danger);border-color:color-mix(in oklab, var(--danger), #fff 70%)}
+    .btn-danger:hover{background:color-mix(in oklab, var(--danger), var(--card) 92%)}
+    .tiny{font-size:13px;padding:6px 10px;min-height:36px}
+    .chip{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;background:var(--chip);margin-left:6px}
+
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      font-size:12px;color:var(--muted);text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);
+      background:color-mix(in oklab, var(--card), #fff 5%)
+    }
+    tbody td{padding:8px;border-bottom:1px solid var(--border);vertical-align:middle}
+    .num{text-align:right;min-width:42px}
+    .tag{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46}
+    .tag-red{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+    .last{border:1px dashed var(--border);border-radius:10px;padding:10px;background:color-mix(in oklab, var(--card), #fff 4%)}
+    .two-col{display:grid;gap:10px}
+    @media(min-width:700px){.two-col{grid-template-columns:1fr 1fr}}
+    .lastTitle{font-weight:700;margin-bottom:6px}
+    .notice{font-size:12px;color:#065f46;background:#ecfdf5;border:1px solid #d1fae5;border-radius:8px;padding:6px 8px}
+    .warn{font-size:12px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:6px 8px}
+
+    /* 横スクロール（テーブル崩し過ぎない派） */
+    .table-wrap{overflow-x:auto; scrollbar-gutter:stable both-edges}
+
+    /* スマホ圧縮：数値セルを少し小さめに */
+    @media(max-width:560px){
+      .num{min-width:auto}
+      thead th, tbody td{padding:6px}
+      .toolbar > *{margin-top:4px}
+      .container{padding-bottom:128px}
+    }
+
+    /* フッター操作バー（固定） */
+    .dock{
+      position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);
+      padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:30
+    }
+    .dock .btn{min-width:140px}
+
+    /* アニメ控えめ */
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:0.001ms!important;animation-iteration-count:1!important;transition-duration:0.001ms!important;scroll-behavior:auto!important}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>IdentityV 参加型メンバー自動調整</h1>
+    <p class="muted">
+      サバ4＋ハン1を<b>総出場回数が平均</b>になるよう自動抽選。新規参加者は初回まで優先。<br>
+      手動修正（回数±・名前/希望編集）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）に対応。
+    </p>
+  </header>
+
+  <!-- 追加フォーム & 手動修正モード -->
+  <section class="card">
+    <div class="row">
+      <input id="nameInput" type="text" placeholder="プレイヤー名" style="min-width:220px;flex:1" inputmode="text" autocomplete="off">
+      <select id="prefInput" title="ロール希望" aria-label="ロール希望">
+        <option value="either">希望なし</option>
+        <option value="survivor">サバイバー希望</option>
+        <option value="hunter">ハンター希望</option>
+      </select>
+      <button class="btn btn-primary" onclick="addPlayer()">追加</button>
+      <button class="btn" onclick="exportCSV()">CSVエクスポート</button>
+      <label class="row" style="gap:6px" title="オンで手動修正UIを表示">
+        <input id="manualToggle" type="checkbox" onchange="toggleManual()"><span>手動修正</span>
+      </label>
+    </div>
+    <p class="muted" style="margin:6px 0 0">手動の回数±は「調整値」として保存され、履歴からの再計算と合算されます。</p>
+  </section>
+
+  <!-- 自動抽選 & 直近 -->
+  <section class="grid grid-2" style="margin-top:10px">
+    <div class="card">
+      <h3>次の試合</h3>
+      <div class="row">
+        <button id="btnAutoPick" class="btn btn-primary" onclick="pickNext()">自動選定（確定）</button>
+        <button class="btn" onclick="undoLastMatch()">直前の試合を取り消し</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="row" style="gap:6px" title="アクティブ10人以上で有効">
+          <input id="dualToggle" type="checkbox" onchange="toggleDual()">
+          <span>2試合同時</span>
+        </label>
+        <span id="dualHint" class="muted"></span>
+      </div>
+      <p class="muted" style="margin:8px 0 0">抽選は履歴に保存され、常に<b>履歴→再集計＋手動調整</b>で整合します。</p>
+    </div>
+    <div class="card">
+      <h3>直近の試合</h3>
+      <div id="lastWrap" class="two-col">
+        <div id="lastMatchA" class="last">まだ試合はありません</div>
+        <div id="lastMatchB" class="last" style="display:none">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 参加者一覧 -->
+  <section class="card" style="margin-top:10px">
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <h3>参加者一覧</h3>
+      <div class="row toolbar">
+        <label class="row" style="gap:6px">
+          <input id="masterSelect" type="checkbox" onchange="toggleSelectAll(this.checked)">
+          <span>全選択</span>
+        </label>
+        <button class="btn" onclick="selectRecentAdded()">このセッションで追加を選択</button>
+        <button class="btn btn-danger" onclick="bulkDeleteSelected()">選択を一括削除</button>
+        <span class="muted">選択中: <span id="selCount">0</span>｜<span id="stats"></span></span>
+      </div>
+    </div>
+    <div class="table-wrap" style="margin-top:6px">
+      <table>
+        <thead>
+          <tr>
+            <th>選</th>
+            <th>名前（✓=アクティブ）</th>
+            <th class="num">サバ</th>
+            <th class="num">ハン</th>
+            <th class="num">合計</th>
+            <th>希望</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="playerTbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 手動登録（オン時に表示） -->
+  <section id="manualPanel" class="card" style="margin-top:10px;display:none">
+    <h3>手動で試合を登録</h3>
+    <div class="row" style="align-items:flex-end">
+      <div>
+        <label class="muted">ハンター</label><br>
+        <select id="manualHunter" style="min-width:180px"></select>
+      </div>
+      <div>
+        <label class="muted">サバイバー（4人）</label><br>
+        <select id="manualS1" style="min-width:140px"></select>
+        <select id="manualS2" style="min-width:140px"></select>
+        <select id="manualS3" style="min-width:140px"></select>
+        <select id="manualS4" style="min-width:140px"></select>
+      </div>
+      <button class="btn btn-primary" onclick="addManualMatch()">試合を追加</button>
+      <span class="muted">※ 同一人物は選べません。追加後に再集計。</span>
+    </div>
+  </section>
+
+  <!-- 履歴 -->
+  <section class="card" style="margin-top:10px">
+    <details open>
+      <summary>試合履歴（<span id="historyCount">0</span>）</summary>
+      <div id="historyList" style="margin-top:10px;display:grid;gap:8px"></div>
+    </details>
+  </section>
+
+  <p class="muted" style="margin-top:10px">© <span id="year"></span> IdentityV Queue Balancer — クライアントローカル保存</p>
+</div>
+
+<!-- 下部固定操作バー（スマホ向けの即時操作） -->
+<div class="dock" role="toolbar" aria-label="クイック操作">
+  <button class="btn btn-primary" onclick="pickNext()">次の試合</button>
+  <label class="row" style="gap:6px">
+    <input id="dualToggleDock" type="checkbox" onchange="toggleDualDock()"> <span>2試合同時</span>
+  </label>
+  <button class="btn btn-danger" onclick="bulkDeleteSelected()">一括削除</button>
+</div>
+
+<script>
+  // ===== 永続化 & セッション =====
+  let players = JSON.parse(localStorage.getItem("iv_players") || "[]");
+  let matches = JSON.parse(localStorage.getItem("iv_matches") || "[]");
+  let manualMode = false;
+  let dualMode = false;                // 2試合同時モード
+  let lastCreateCount = 0;             // 直近の作成数（1 or 2）
+  const sessionStartTs = Date.now();   // このページを開いてからの追加識別
+  let selectedNames = new Set();       // 一括削除用
+
+  // 既存データへ新フィールドを補完
+  (function migrate(){
+    const now = Date.now();
+    let changed = false;
+    for(const p of players){
+      if(!("joinTs" in p)){ p.joinTs = now; changed = true; }
+      if(!("lastTs" in p)){ p.lastTs = null; changed = true; }
+      if(!("pref" in p)){ p.pref = "either"; changed = true; }
+      if(!("active" in p)){ p.active = true; changed = true; }
+      if(!("sCount" in p)){ p.sCount = 0; changed = true; }
+      if(!("hCount" in p)){ p.hCount = 0; changed = true; }
+      if(!("sAdj" in p)){ p.sAdj = 0; changed = true; }
+      if(!("hAdj" in p)){ p.hAdj = 0; changed = true; }
+    }
+    if(changed) save();
+  })();
+
+  function save(){
+    localStorage.setItem("iv_players", JSON.stringify(players));
+    localStorage.setItem("iv_matches", JSON.stringify(matches));
+  }
+
+  // ===== util =====
+  const $ = sel => document.querySelector(sel);
+  function escapeHtml(s){return String(s).replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+  function tsToString(ts){const d=new Date(ts),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`}
+  function prefLabel(p){return p==='survivor'?'サバ希望':p==='hunter'?'ハンター希望':'希望なし'}
+
+  // ===== 回数 & 待機情報 再計算（履歴→単一の真実 + 調整値合算） =====
+  function recomputeCountsFromMatches(rebuildTiming=false){
+    players.forEach(p=>{ p.sCount=0; p.hCount=0; if(rebuildTiming) p.lastTs=null; });
+    const idx = new Map(players.map((p,i)=>[p.name,i]));
+    const sorted = matches.slice().sort((a,b)=>(a.ts||0)-(b.ts||0));
+    for(const m of sorted){
+      const t = m.ts || Date.now();
+      const hi = idx.get(m.hunter);
+      if(hi!=null){ players[hi].hCount++; if(rebuildTiming) players[hi].lastTs = t; }
+      for(const s of (m.survivors||[])){
+        const si = idx.get(s);
+        if(si!=null){ players[si].sCount++; if(rebuildTiming) players[si].lastTs = t; }
+      }
+    }
+    for(const p of players){
+      p.sCount = Math.max(0, p.sCount + (p.sAdj||0));
+      p.hCount = Math.max(0, p.hCount + (p.hAdj||0));
+    }
+  }
+
+  // ===== 参加者操作 =====
+  function addPlayer(){
+    const name = ($("#nameInput").value||"").trim();
+    const pref = $("#prefInput").value || "either";
+    if(!name) return;
+    if(players.some(p=>p.name===name)){ alert("同名の参加者がすでにいます"); return; }
+    const now = Date.now();
+    players.push({ name, sCount:0, hCount:0, sAdj:0, hAdj:0, pref, active:true, joinTs:now, lastTs:null });
+    $("#nameInput").value="";
+    recomputeCountsFromMatches(false);
+    save(); render();
+  }
+  function toggleActive(i){ players[i].active=!players[i].active; save(); render(); }
+
+  // —— 手動：名前/希望編集・回数±（調整値として保存）
+  function editName(i, val){
+    const v = (val||"").trim();
+    if(!v) return;
+    if(players.some((p,pi)=>pi!==i && p.name===v)){alert("同名は使えません"); render(); return;}
+    const old = players[i].name;
+    players[i].name = v;
+    if(selectedNames.has(old)){ selectedNames.delete(old); selectedNames.add(v); }
+    for(const m of matches){
+      if(m.hunter===old) m.hunter=v;
+      m.survivors = m.survivors.map(s=>s===old?v:s);
+    }
+    recomputeCountsFromMatches(true); save(); render();
+  }
+  function editPref(i, val){ players[i].pref = val; save(); render(); }
+  function incS(i){ players[i].sAdj = (players[i].sAdj||0) + 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
+  function decS(i){ players[i].sAdj = (players[i].sAdj||0) - 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
+  function incH(i){ players[i].hAdj = (players[i].hAdj||0) + 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
+  function decH(i){ players[i].hAdj = (players[i].hAdj||0) - 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
+
+  // —— 完全削除（単体）
+  function removePlayer(i){
+    const p = players[i]; if(!p) return;
+    if(!confirm(`「${p.name}」を完全削除します。\n・名簿から削除\n・関与する試合を履歴から削除\n・残り履歴から回数/待機情報を再計算`)) return;
+    const removed = p.name;
+    players.splice(i,1);
+    selectedNames.delete(removed);
+    cleanupMatchesAndRecompute();
+  }
+
+  // ===== 一括削除（選択したメンバー） =====
+  function toggleSelect(i){
+    const name = players[i].name;
+    if(selectedNames.has(name)) selectedNames.delete(name); else selectedNames.add(name);
+    updateSelectionUI();
+  }
+  function toggleSelectAll(flag){
+    if(flag){ selectedNames = new Set(players.map(p=>p.name)); }
+    else { selectedNames.clear(); }
+    updateSelectionUI();
+  }
+  function selectRecentAdded(){
+    const newly = players.filter(p=>p.joinTs >= sessionStartTs).map(p=>p.name);
+    if(newly.length===0){ alert("このセッションで追加されたメンバーはいません"); return; }
+    newly.forEach(n=>selectedNames.add(n));
+    updateSelectionUI();
+  }
+  function bulkDeleteSelected(){
+    if(selectedNames.size===0){ alert("一括削除するメンバーが選択されていません"); return; }
+    const names = Array.from(selectedNames);
+    const preview = names.slice(0,20).join("、 ") + (names.length>20 ? " ほか…" : "");
+    if(!confirm(`選択した ${names.length} 名を完全削除します。\n（履歴からも該当試合を削除し、再計算します）\n\n対象: ${preview}`)) return;
+    const removeSet = new Set(names);
+    players = players.filter(p=>!removeSet.has(p.name));
+    selectedNames.clear();
+    $("#masterSelect").checked = false;
+    cleanupMatchesAndRecompute();
+  }
+  function cleanupMatchesAndRecompute(){
+    const alive = new Set(players.map(x=>x.name));
+    matches = matches.filter(m=>{
+      if(!alive.has(m.hunter)) return false;
+      if(!Array.isArray(m.survivors) || m.survivors.length!==4) return false;
+      for(const s of m.survivors) if(!alive.has(s)) return false;
+      return true;
+    });
+    recomputeCountsFromMatches(true); save(); render();
+  }
+  function updateSelectionUI(){
+    $("#selCount").textContent = selectedNames.size;
+    $("#masterSelect").checked = selectedNames.size>0 && selectedNames.size===players.length;
+    renderTablesOnly();
+  }
+
+  // ===== 2試合同時モード 切替（上部と下部のトグルを同期） =====
+  function toggleDual(){
+    dualMode = $("#dualToggle").checked;
+    $("#dualToggleDock").checked = dualMode;
+    updateDualHint();
+  }
+  function toggleDualDock(){
+    dualMode = $("#dualToggleDock").checked;
+    $("#dualToggle").checked = dualMode;
+    updateDualHint();
+  }
+  function updateDualHint(){
+    const actives = players.filter(p=>p.active).length;
+    const hint = $("#dualHint");
+    if(dualMode){
+      if(actives>=10){
+        hint.innerHTML = `<span class="notice">2試合同時：有効（アクティブ ${actives}）</span>`;
+      }else{
+        hint.innerHTML = `<span class="warn">アクティブが10人未満のため実行時は1試合のみ（現在 ${actives}）</span>`;
+      }
+    }else{
+      hint.textContent = "現在は1試合モードです";
+    }
+  }
+
+  // ===== 抽選ロジック =====
+  function pickNext(){
+    const activePlayers = players.filter(p=>p.active);
+    const actCount = activePlayers.length;
+    updateDualHint();
+
+    if(!dualMode || actCount < 10){
+      const m = buildOneMatch(activePlayers);
+      if(!m){ alert("アクティブ参加者が5人以上必要です"); return; }
+      matches.push(m);
+      lastCreateCount = 1;
+    }else{
+      const prio = priorityOrder(activePlayers);
+      if(prio.length < 10){ alert("アクティブが10人未満です"); return; }
+
+      const firstTen = prio.slice(0,10);
+      const poolA = [firstTen[0], firstTen[2], firstTen[4], firstTen[6], firstTen[8]];
+      const poolB = [firstTen[1], firstTen[3], firstTen[5], firstTen[7], firstTen[9]];
+
+      const mA = assignRoles(poolA);
+      const mB = assignRoles(poolB);
+
+      const now = Date.now();
+      matches.push({ ts: now,   hunter: mA.hunter.name, survivors: mA.survivors.map(p=>p.name) });
+      matches.push({ ts: now+1, hunter: mB.hunter.name, survivors: mB.survivors.map(p=>p.name) });
+      lastCreateCount = 2;
+    }
+
+    recomputeCountsFromMatches(true); save(); render();
+  }
+
+  // 優先度ソート：aCount昇順 → newcomerBoost → waitScore → name
+  function priorityOrder(list){
+    const now = Date.now();
+    function key(p){
+      const a = p.sCount + p.hCount;
+      let newcomerBoost = 0;
+      if(a===0){
+        const win = 15*60*1000;
+        const dt = Math.max(0, Math.min(win, now - p.joinTs));
+        newcomerBoost = 1 - (dt/win);
+      }
+      const refTs = p.lastTs!=null ? p.lastTs : p.joinTs;
+      const waitScore = (now - refTs) / (10*60*1000);
+      return {a, newcomerBoost, waitScore, name:p.name};
+    }
+    return list.slice().sort((a,b)=>{
+      const ka=key(a), kb=key(b);
+      if(ka.a !== kb.a) return ka.a - kb.a;
+      if(ka.newcomerBoost !== kb.newcomerBoost) return kb.newcomerBoost - ka.newcomerBoost;
+      if(ka.waitScore !== kb.waitScore) return kb.waitScore - ka.waitScore;
+      return ka.name.localeCompare(kb.name);
+    });
+  }
+
+  // 1試合構築（5人必要）
+  function buildOneMatch(act){
+    if(act.length < 5) return null;
+    const pool = priorityOrder(act).slice(0,5);
+    const res = assignRoles(pool);
+    const now = Date.now();
+    return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
+  }
+
+  // 役割割当：不足度＋希望＋未出場追い風
+  function assignRoles(pool){
+    function hunterLack(p){
+      const a = p.sCount + p.hCount;
+      let s = (a/5) - p.hCount;
+      if(p.pref==='hunter') s += 0.25;
+      if(p.pref==='survivor') s -= 0.15;
+      if(a===0) s += 0.15;
+      return s + Math.random()*0.001;
+    }
+    function survivorLack(p){
+      const a = p.sCount + p.hCount;
+      let s = (a*4/5) - p.sCount;
+      if(p.pref==='survivor') s += 0.25;
+      if(p.pref==='hunter') s -= 0.15;
+      if(a===0) s += 0.15;
+      return s + Math.random()*0.001;
+    }
+    const hunter = pool.slice().sort((a,b)=>hunterLack(b)-hunterLack(a))[0];
+    const survivors = pool.filter(p=>p!==hunter).slice().sort((a,b)=>survivorLack(b)-survivorLack(a)).slice(0,4);
+    return { hunter, survivors };
+  }
+
+  function undoLastMatch(){
+    const n = Math.min(matches.length, Math.max(1, lastCreateCount||1));
+    if(n<=0) return;
+    for(let i=0;i<n;i++) matches.pop();
+    lastCreateCount = 0;
+    recomputeCountsFromMatches(true); save();
+    $("#lastMatchA").textContent="直前の試合を取り消しました";
+    $("#lastMatchB").style.display="none";
+    renderTablesOnly();
+  }
+
+  // ===== 手動：モード切替／試合追加／履歴削除 =====
+  function toggleManual(){
+    manualMode = $("#manualToggle").checked;
+    $("#manualPanel").style.display = manualMode ? "block" : "none";
+    render(); // UI更新
+  }
+  function fillManualSelectors(){
+    const opts = players.map(p=>`<option>${escapeHtml(p.name)}</option>`).join("");
+    $("#manualHunter").innerHTML = `<option value="">未選択</option>${opts}`;
+    ["#manualS1","#manualS2","#manualS3","#manualS4"].forEach(sel=>{
+      $(sel).innerHTML = `<option value="">未選択</option>${opts}`;
+    });
+  }
+  function addManualMatch(){
+    const h = $("#manualHunter").value;
+    const s1=$("#manualS1").value, s2=$("#manualS2").value, s3=$("#manualS3").value, s4=$("#manualS4").value;
+    const surv=[s1,s2,s3,s4];
+    if(!h || surv.some(v=>!v)){ alert("ハンター1名、サバイバー4名を選択してください"); return; }
+    const set = new Set([h,...surv]);
+    if(set.size!==5){ alert("同一人物は選べません"); return; }
+    matches.push({ ts: Date.now(), hunter: h, survivors: surv });
+    lastCreateCount = 1;
+    recomputeCountsFromMatches(true); save(); render();
+  }
+  function deleteMatch(idx){
+    if(!confirm("この試合を履歴から削除しますか？\n（回数は履歴から再計算＋手動調整値適用）")) return;
+    matches.splice(idx,1);
+    recomputeCountsFromMatches(true); save(); render();
+  }
+
+  // ===== レンダリング =====
+  function render(){
+    renderTablesOnly();
+    updateDualHint();
+    updateLastMatchView();
+    renderHistory();
+    if(manualMode) fillManualSelectors();
+    $("#year").textContent = new Date().getFullYear();
+    $("#selCount").textContent = selectedNames.size;
+    // トグル同期（初期表示）
+    $("#dualToggleDock").checked = dualMode;
+    $("#dualToggle").checked = dualMode;
+  }
+  function renderTablesOnly(){
+    const tbody = $("#playerTbody"); tbody.innerHTML="";
+    const now = Date.now();
+    players.forEach((p,i)=>{
+      const a = p.sCount + p.hCount;
+      const refTs = p.lastTs!=null ? p.lastTs : p.joinTs;
+      const waitMin = Math.floor(Math.max(0, now - refTs) / 60000);
+      const newcomer = (p.sCount+p.hCount)===0 ? `<span class="chip">NEW</span>` : "";
+
+      const nameCell = manualMode
+        ? `<input type="text" value="${escapeHtml(p.name)}" style="min-width:160px" onblur="editName(${i}, this.value)">`
+        : `<span>${escapeHtml(p.name)}</span>`;
+
+      const manualControlsS = `
+        <div class="row" style="justify-content:flex-end;gap:4px">
+          <button class="btn tiny" onclick="decS(${i})">サバ−</button>
+          <span>${p.sCount}</span>
+          <button class="btn tiny" onclick="incS(${i})">サバ＋</button>
+        </div>`;
+      const manualControlsH = `
+        <div class="row" style="justify-content:flex-end;gap:4px">
+          <button class="btn tiny" onclick="decH(${i})">ハン−</button>
+          <span>${p.hCount}</span>
+          <button class="btn tiny" onclick="incH(${i})">ハン＋</button>
+        </div>`;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><input type="checkbox" ${selectedNames.has(p.name)?"checked":""} onchange="toggleSelect(${i})" aria-label="選択" /></td>
+        <td>
+          <label class="row" style="gap:6px">
+            <input type="checkbox" ${p.active?"checked":""} onchange="toggleActive(${i})" aria-label="アクティブ切替">
+            ${nameCell}
+            ${newcomer}
+          </label>
+          <div class="muted" style="font-size:12px;margin-left:26px">待機：約${waitMin}分</div>
+        </td>
+        <td class="num">${manualMode? manualControlsS : p.sCount}</td>
+        <td class="num">${manualMode? manualControlsH : p.hCount}</td>
+        <td class="num"><b>${a}</b></td>
+        <td>
+          ${manualMode
+            ? `<select onchange="editPref(${i}, this.value)" aria-label="希望選択">
+                 <option value="either" ${p.pref==='either'?'selected':''}>希望なし</option>
+                 <option value="survivor" ${p.pref==='survivor'?'selected':''}>サバ希望</option>
+                 <option value="hunter" ${p.pref==='hunter'?'selected':''}>ハンター希望</option>
+               </select>`
+            : escapeHtml(prefLabel(p.pref))}
+        </td>
+        <td><button class="btn btn-danger tiny" onclick="removePlayer(${i})">削除</button></td>
+      `;
+      tbody.appendChild(row);
+    });
+    const activeCount = players.filter(p=>p.active).length;
+    $("#stats").textContent = `アクティブ: ${activeCount} / 登録: ${players.length}`;
+    $("#historyCount").textContent = String(matches.length);
+    $("#selCount").textContent = selectedNames.size;
+    $("#masterSelect").checked = selectedNames.size>0 && selectedNames.size===players.length;
+  }
+
+  function updateLastMatchView(){
+    const a = $("#lastMatchA");
+    const b = $("#lastMatchB");
+    if(!matches.length){
+      a.textContent="まだ試合はありません";
+      b.style.display="none";
+      return;
+    }
+    const last = matches[matches.length-1];
+    const second = matches[matches.length-2];
+    const showTwo = second && Math.abs((last.ts||0) - (second.ts||0)) <= 2000;
+
+    function htmlFor(m){
+      return `
+        <div class="lastTitle">${tsToString(m.ts)}</div>
+        <div><span class="tag tag-red">HUNTER</span> <b>${escapeHtml(m.hunter)}</b></div>
+        <div style="margin-top:4px"><span class="tag">SURVIVORS</span> <b>${m.survivors.map(escapeHtml).join("、 ")}</b></div>
+      `;
+    }
+    a.innerHTML = htmlFor(last);
+    if(showTwo){
+      b.style.display = "block";
+      b.innerHTML = htmlFor(second);
+    }else{
+      b.style.display = "none";
+    }
+  }
+
+  function renderHistory(){
+    const list = $("#historyList"); list.innerHTML="";
+    for(let i=matches.length-1;i>=0;i--){
+      const m = matches[i];
+      const card = document.createElement("div");
+      card.className = "last";
+      card.style.borderStyle = "solid";
+      card.innerHTML = `
+        <div class="muted" style="font-size:12px">${tsToString(m.ts)}</div>
+        <div style="margin-top:2px"><span class="tag tag-red">HUNTER</span> <b>${escapeHtml(m.hunter)}</b></div>
+        <div style="margin-top:2px"><span class="tag">SURVIVORS</span> <b>${m.survivors.map(escapeHtml).join("、 ")}</b></div>
+        ${manualMode ? `<div style="margin-top:6px"><button class="btn btn-danger tiny" onclick="deleteMatch(${i})">この試合を削除</button></div>` : ``}
+      `;
+      list.appendChild(card);
+    }
+  }
+
+  // ===== CSV =====
+  function exportCSV(){
+    const header=["name","active","survivor_count","hunter_count","pref","joinTs","lastTs","sAdj","hAdj"];
+    const lines=[header.join(",")];
+    players.forEach(p=>{
+      const row=[csvEsc(p.name),p.active?1:0,p.sCount,p.hCount,p.pref,p.joinTs||"",p.lastTs||"",p.sAdj||0,p.hAdj||0].join(",");
+      lines.push(row);
+    });
+    const blob=new Blob(["\uFEFF"+lines.join("\n")],{type:"text/csv"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=`identityv_players_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),800);
+  }
+  function csvEsc(t){t=String(t);return /[",\n]/.test(t)?'"'+t.replaceAll('"','""')+'"':t}
+
+  // ===== 初期化 =====
+  window.addEventListener("DOMContentLoaded", ()=>{
+    recomputeCountsFromMatches(true);
+    $("#manualToggle").checked = manualMode;
+    $("#dualToggle").checked = dualMode;
+    $("#dualToggleDock").checked = dualMode;
+    render();
+    $("#year").textContent = new Date().getFullYear();
+  });
+</script>
+</body>
+</html>
