@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>IdentityV 参加型メンバー自動調整</title>
-  <meta name="description" content="第5人格の参加型配信用：サバ4＋ハン1の自動抽選＆平均化。新規優先・手動修正・一括削除・2試合同時対応。">
+  <meta name="description" content="第5人格の参加型配信用：サバ4＋ハン1の自動抽選＆平均化。新規優先・手動修正・一括削除・2試合同時・OBS用オーバーレイ対応。">
 
   <style>
     /* ===== テーマ変数（Lightを基準） ===== */
@@ -13,7 +13,6 @@
       --primary:#2563eb;--primary-fg:#ffffff;--danger:#dc2626;--ring:rgba(37,99,235,.25);
       --chip:#fff;--shadow:0 1px 2px rgba(0,0,0,.04)
     }
-    /* OSダークに追従（Auto時の基準） */
     @media (prefers-color-scheme: dark){
       :root{
         --bg:#0b1020;--card:#121933;--text:#e6e8ee;--muted:#a5adcc;--border:#27304f;
@@ -21,8 +20,6 @@
         --chip:#1b2342;--shadow:0 1px 2px rgba(0,0,0,.5)
       }
     }
-    /* ← Autoは上記（OS設定）に従う。
-       ↓ ユーザーが手動指定した場合は data-theme で強制上書き */
     :root[data-theme="light"]{
       --bg:#f6f7fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
       --primary:#2563eb;--primary-fg:#ffffff;--danger:#dc2626;--ring:rgba(37,99,235,.25);
@@ -42,7 +39,7 @@
       line-height:1.6;
       transition:background-color .2s ease,color .2s ease;
     }
-    .container{max-width:1100px;margin:0 auto;padding:20px 16px 96px}
+    .container{max-width:1100px;margin:0 auto;padding:20px 16px 112px}
     h1{margin:0 0 6px;font-size:clamp(20px,3vw,28px)}
     h3{margin:0 0 8px;font-size:clamp(16px,2.2vw,18px)}
     .muted{color:var(--muted)}
@@ -54,7 +51,7 @@
       box-shadow:var(--shadow);transition:background-color .2s ease,border-color .2s ease
     }
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input[type="text"],select,input[type="number"]{
+    input[type="text"],select{
       border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:transparent;
       color:var(--text);font-size:16px;outline:none;min-height:44px;transition:border-color .2s ease,box-shadow .2s ease
     }
@@ -93,22 +90,45 @@
       .num{min-width:auto}
       thead th, tbody td{padding:6px}
       .toolbar > *{margin-top:4px}
-      .container{padding-bottom:128px}
+      .container{padding-bottom:148px}
     }
 
+    /* 下部固定操作バー（スマホ向けの即時操作） */
     .dock{
       position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);
       padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:30
     }
-    .dock .btn{min-width:140px}
+    .dock .btn{min-width:128px}
+    .theme-btn{min-width:auto;padding:8px 10px}
+    .theme-label{font-size:12px;color:var(--muted)}
 
     @media (prefers-reduced-motion: reduce){
       *{animation-duration:0.001ms!important;animation-iteration-count:1!important;transition-duration:0.001ms!important;scroll-behavior:auto!important}
     }
 
-    /* テーマ切替ボタンの小さめスタイル */
-    .theme-btn{min-width:auto;padding:8px 10px}
-    .theme-label{font-size:12px;color:var(--muted)}
+    /* ===== Overlay（配信用） ===== */
+    .overlay-root{
+      display:grid;gap:10px;min-height:100vh;align-content:center;justify-items:center;
+      padding:16px;
+    }
+    .overlay-card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:16px 20px;
+      box-shadow:var(--shadow);
+      min-width:min(92vw,1200px);
+    }
+    .overlay-title{font-weight:800;font-size:clamp(20px,3.5vw,28px);margin:0 0 6px}
+    .overlay-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:clamp(18px,2.8vw,24px)}
+    .overlay-tag{display:inline-block;font-size:.8em;padding:.25em .6em;border-radius:999px;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46}
+    .overlay-tag-red{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+    .overlay-time{font-size:.85em;color:var(--muted);margin-bottom:4px}
+    .overlay-split{display:grid;gap:12px}
+    @media(min-width:900px){.overlay-split{grid-template-columns:1fr 1fr}}
+    /* 透明背景モード（?transparent=1） */
+    .transparent-bg{background:transparent !important}
+    body.transparent-bg{background:transparent !important}
   </style>
 </head>
 <body>
@@ -121,9 +141,12 @@
         手動修正（回数±・名前/希望編集）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）に対応。
       </p>
     </div>
-    <!-- ヘッダー側のテーマ切替ボタン（Dockと同期） -->
-    <div>
-      <button id="themeBtnTop" class="btn theme-btn" onclick="cycleTheme()" aria-label="テーマ切替">🌓 Auto</button>
+    <!-- テーマ切替 + オーバーレイ起動 -->
+    <div style="text-align:right">
+      <div class="row" style="justify-content:flex-end">
+        <button id="themeBtnTop" class="btn theme-btn" onclick="cycleTheme()" aria-label="テーマ切替">🌓 Auto</button>
+        <button class="btn" onclick="openOverlay()">配信用オーバーレイ</button>
+      </div>
       <div class="theme-label" id="themeLabelTop" aria-hidden="true">OS設定に追従</div>
     </div>
   </header>
@@ -242,7 +265,6 @@
     <input id="dualToggleDock" type="checkbox" onchange="toggleDualDock()"> <span>2試合同時</span>
   </label>
   <button class="btn btn-danger" onclick="bulkDeleteSelected()">一括削除</button>
-  <!-- Dock側のテーマ切替ボタン（ヘッダーと同期） -->
   <button id="themeBtnDock" class="btn theme-btn" onclick="cycleTheme()" aria-label="テーマ切替">🌓 Auto</button>
 </div>
 
@@ -307,7 +329,7 @@
   function tsToString(ts){const d=new Date(ts),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`}
   function prefLabel(p){return p==='survivor'?'サバ希望':p==='hunter'?'ハンター希望':'希望なし'}
 
-  // ===== 回数 & 待機情報 再計算 =====
+  // ===== 回数 & 待機情報 再計算（履歴→単一の真実 + 調整値合算） =====
   function recomputeCountsFromMatches(rebuildTiming=false){
     players.forEach(p=>{ p.sCount=0; p.hCount=0; if(rebuildTiming) p.lastTs=null; });
     const idx = new Map(players.map((p,i)=>[p.name,i]));
@@ -420,11 +442,13 @@
     dualMode = $("#dualToggle").checked;
     $("#dualToggleDock").checked = dualMode;
     updateDualHint();
+    render(); // UI更新（ヒント等）
   }
   function toggleDualDock(){
     dualMode = $("#dualToggleDock").checked;
     $("#dualToggle").checked = dualMode;
     updateDualHint();
+    render(); // UI更新
   }
   function updateDualHint(){
     const actives = players.filter(p=>p.active).length;
@@ -471,7 +495,7 @@
     recomputeCountsFromMatches(true); save(); render();
   }
 
-  // 優先度ソート
+  // 優先度ソート：aCount昇順 → newcomerBoost → waitScore → name
   function priorityOrder(list){
     const now = Date.now();
     function key(p){
@@ -495,7 +519,7 @@
     });
   }
 
-  // 1試合構築
+  // 1試合構築（5人必要）
   function buildOneMatch(act){
     if(act.length < 5) return null;
     const pool = priorityOrder(act).slice(0,5);
@@ -504,7 +528,7 @@
     return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
   }
 
-  // 役割割当
+  // 役割割当：不足度＋希望＋未出場追い風
   function assignRoles(pool){
     function hunterLack(p){
       const a = p.sCount + p.hCount;
@@ -536,6 +560,7 @@
     $("#lastMatchA").textContent="直前の試合を取り消しました";
     $("#lastMatchB").style.display="none";
     renderTablesOnly();
+    broadcastOverlayState();
   }
 
   // ===== 手動：モード切替／試合追加／履歴削除 =====
@@ -561,11 +586,13 @@
     matches.push({ ts: Date.now(), hunter: h, survivors: surv });
     lastCreateCount = 1;
     recomputeCountsFromMatches(true); save(); render();
+    broadcastOverlayState();
   }
   function deleteMatch(idx){
     if(!confirm("この試合を履歴から削除しますか？\n（回数は履歴から再計算＋手動調整値適用）")) return;
     matches.splice(idx,1);
     recomputeCountsFromMatches(true); save(); render();
+    broadcastOverlayState();
   }
 
   // ===== レンダリング =====
@@ -580,6 +607,8 @@
     // トグル同期（初期表示）
     $("#dualToggleDock").checked = dualMode;
     $("#dualToggle").checked = dualMode;
+    // OBSオーバーレイへ最新を通知
+    broadcastOverlayState();
   }
   function renderTablesOnly(){
     const tbody = $("#playerTbody"); tbody.innerHTML="";
@@ -714,7 +743,106 @@
     render();
     $("#year").textContent = new Date().getFullYear();
   });
+
+  /* ===================== 配信用オーバーレイ（ブラウザソース対応） ===================== */
+  const overlayChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('iv_overlay') : null;
+
+  /* 直近1～2試合（2試合同時は2件） */
+  function getOverlayMatches(){
+    if(!matches || matches.length===0) return [];
+    const last = matches[matches.length-1];
+    const second = matches[matches.length-2];
+    const two = second && Math.abs((last.ts||0)-(second.ts||0))<=2000;
+    return two ? [second,last] : [last];
+  }
+
+  /* 本体→オーバーレイへ最新をブロードキャスト（render()の最後で呼ぶ） */
+  function broadcastOverlayState(){
+    if(!overlayChannel) return;
+    const items = getOverlayMatches().map(m=>({ ts:m.ts, hunter:m.hunter, survivors:m.survivors }));
+    overlayChannel.postMessage({type:'state', payload:{ t:Date.now(), items }});
+  }
+
+  /* ボタンクリックで別ウィンドウとして開く（ウィンドウキャプチャ派向け） */
+  function openOverlay(){
+    const url = new URL(location.href);
+    url.searchParams.set('overlay','1');
+    // 透明にしたい場合は以下をON（OBSブラウザソースならURLに &transparent=1 を推奨）
+    // url.searchParams.set('transparent','1');
+    window.open(url.toString(), 'overlay', 'width=1200,height=340,noopener,noreferrer');
+  }
+
+  /* ===== オーバーレイモード（?overlay=1） ===== */
+  (function initOverlayMode(){
+    const params = new URLSearchParams(location.search);
+    if(params.get('overlay')!=='1') return;
+
+    // 透明背景
+    if(params.get('transparent')==='1'){
+      document.documentElement.classList.add('transparent-bg');
+      document.body.classList.add('transparent-bg');
+    }
+
+    // テーマ指定（auto/light/dark）
+    const themeParam = (params.get('theme')||'').toLowerCase();
+    if(themeParam==='light' || themeParam==='dark'){
+      document.documentElement.setAttribute('data-theme', themeParam);
+    }else{
+      document.documentElement.removeAttribute('data-theme'); // auto(OS追従)
+    }
+
+    // スケール・タイトル表示
+    const scale = parseFloat(params.get('scale') || '1');
+    const hideTitle = params.get('title') === '0';
+
+    // 本体DOMを置き換え（オーバーレイUI）
+    document.body.innerHTML = `
+      <div id="ovRoot" class="overlay-root" style="transform:scale(${isFinite(scale)?scale:1}); transform-origin: top center;">
+        <div id="ovWrap" class="overlay-split"></div>
+      </div>
+    `;
+    document.title = '対戦リスト（配信用）';
+
+    // 初期描画（localStorage共有できる環境なら即反映）
+    renderOverlay(getOverlayMatches());
+
+    // BroadcastChannelで本体から受信
+    if(overlayChannel){
+      overlayChannel.onmessage = (ev)=>{
+        if(!ev || !ev.data || ev.data.type!=='state') return;
+        const items = ev.data.payload?.items || [];
+        renderOverlay(items.map(x=>({ts:x.ts, hunter:x.hunter, survivors:x.survivors})));
+      };
+    }
+
+    // フォールバック：3秒おきにlocalStorage由来を試す（同一プロセス系で効く場合あり）
+    setInterval(()=>{ try{ renderOverlay(getOverlayMatches()); }catch(_e){} }, 3000);
+
+    function renderOverlay(items){
+      const wrap = document.getElementById('ovWrap');
+      if(!wrap) return;
+      wrap.innerHTML = '';
+      if(!items || items.length===0){
+        const d = document.createElement('div');
+        d.className = 'overlay-card';
+        d.innerHTML = `<div class="overlay-title">対戦リスト</div><div class="overlay-time">まだ試合がありません</div>`;
+        wrap.appendChild(d);
+        return;
+      }
+      items.forEach((m,i)=>{
+        const card = document.createElement('div');
+        card.className = 'overlay-card';
+        const titleHtml = hideTitle ? '' : `<div class="overlay-title">対戦リスト ${items.length>1 ? (i===0?'A':'B') : ''}</div>`;
+        card.innerHTML = `
+          ${titleHtml}
+          <div class="overlay-time">${tsToString(m.ts)}</div>
+          <div class="overlay-row"><span class="overlay-tag overlay-tag-red">HUNTER</span> <b>${escapeHtml(m.hunter)}</b></div>
+          <div class="overlay-row"><span class="overlay-tag">SURVIVORS</span> <b>${m.survivors.map(escapeHtml).join('、 ')}</b></div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+  })();
 </script>
 </body>
 </html>
-
