@@ -7,18 +7,31 @@
   <meta name="description" content="第5人格の参加型配信用：サバ4＋ハン1の自動抽選＆平均化。新規優先・手動修正・一括削除・2試合同時対応。">
 
   <style>
-    /* ===== ベース（ライト/ダーク自動切替） ===== */
+    /* ===== テーマ変数（Lightを基準） ===== */
     :root{
       --bg:#f6f7fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
       --primary:#2563eb;--primary-fg:#ffffff;--danger:#dc2626;--ring:rgba(37,99,235,.25);
       --chip:#fff;--shadow:0 1px 2px rgba(0,0,0,.04)
     }
+    /* OSダークに追従（Auto時の基準） */
     @media (prefers-color-scheme: dark){
       :root{
         --bg:#0b1020;--card:#121933;--text:#e6e8ee;--muted:#a5adcc;--border:#27304f;
         --primary:#4f7cff;--primary-fg:#0b1020;--danger:#ff6b6b;--ring:rgba(79,124,255,.35);
         --chip:#1b2342;--shadow:0 1px 2px rgba(0,0,0,.5)
       }
+    }
+    /* ← Autoは上記（OS設定）に従う。
+       ↓ ユーザーが手動指定した場合は data-theme で強制上書き */
+    :root[data-theme="light"]{
+      --bg:#f6f7fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
+      --primary:#2563eb;--primary-fg:#ffffff;--danger:#dc2626;--ring:rgba(37,99,235,.25);
+      --chip:#fff;--shadow:0 1px 2px rgba(0,0,0,.04)
+    }
+    :root[data-theme="dark"]{
+      --bg:#0b1020;--card:#121933;--text:#e6e8ee;--muted:#a5adcc;--border:#27304f;
+      --primary:#4f7cff;--primary-fg:#0b1020;--danger:#ff6b6b;--ring:rgba(79,124,255,.35);
+      --chip:#1b2342;--shadow:0 1px 2px rgba(0,0,0,.5)
     }
 
     *{box-sizing:border-box}
@@ -27,6 +40,7 @@
       margin:0;background:var(--bg);color:var(--text);
       font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
       line-height:1.6;
+      transition:background-color .2s ease,color .2s ease;
     }
     .container{max-width:1100px;margin:0 auto;padding:20px 16px 96px}
     h1{margin:0 0 6px;font-size:clamp(20px,3vw,28px)}
@@ -37,17 +51,17 @@
 
     .card{
       background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;
-      box-shadow:var(--shadow)
+      box-shadow:var(--shadow);transition:background-color .2s ease,border-color .2s ease
     }
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     input[type="text"],select,input[type="number"]{
-      border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff10;
-      font-size:16px;outline:none;min-height:44px
+      border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:transparent;
+      color:var(--text);font-size:16px;outline:none;min-height:44px;transition:border-color .2s ease,box-shadow .2s ease
     }
     input:focus,select:focus{box-shadow:0 0 0 4px var(--ring);border-color:var(--primary)}
     .btn{
-      border:1px solid var(--border);background:var(--card);border-radius:10px;
-      padding:10px 12px;cursor:pointer;font-size:15px;min-height:44px
+      border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;
+      padding:10px 12px;cursor:pointer;font-size:15px;min-height:44px;transition:filter .1s ease,background-color .2s ease,border-color .2s ease
     }
     .btn:hover{background:color-mix(in oklab, var(--card), var(--text) 3%)}
     .btn-primary{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
@@ -73,10 +87,8 @@
     .notice{font-size:12px;color:#065f46;background:#ecfdf5;border:1px solid #d1fae5;border-radius:8px;padding:6px 8px}
     .warn{font-size:12px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:6px 8px}
 
-    /* 横スクロール（テーブル崩し過ぎない派） */
     .table-wrap{overflow-x:auto; scrollbar-gutter:stable both-edges}
 
-    /* スマホ圧縮：数値セルを少し小さめに */
     @media(max-width:560px){
       .num{min-width:auto}
       thead th, tbody td{padding:6px}
@@ -84,27 +96,36 @@
       .container{padding-bottom:128px}
     }
 
-    /* フッター操作バー（固定） */
     .dock{
       position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);
       padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:30
     }
     .dock .btn{min-width:140px}
 
-    /* アニメ控えめ */
     @media (prefers-reduced-motion: reduce){
       *{animation-duration:0.001ms!important;animation-iteration-count:1!important;transition-duration:0.001ms!important;scroll-behavior:auto!important}
     }
+
+    /* テーマ切替ボタンの小さめスタイル */
+    .theme-btn{min-width:auto;padding:8px 10px}
+    .theme-label{font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
 <div class="container">
-  <header>
-    <h1>IdentityV 参加型メンバー自動調整</h1>
-    <p class="muted">
-      サバ4＋ハン1を<b>総出場回数が平均</b>になるよう自動抽選。新規参加者は初回まで優先。<br>
-      手動修正（回数±・名前/希望編集）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）に対応。
-    </p>
+  <header class="row" style="justify-content:space-between;align-items:flex-start">
+    <div>
+      <h1>IdentityV 参加型メンバー自動調整</h1>
+      <p class="muted">
+        サバ4＋ハン1を<b>総出場回数が平均</b>になるよう自動抽選。新規参加者は初回まで優先。<br>
+        手動修正（回数±・名前/希望編集）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）に対応。
+      </p>
+    </div>
+    <!-- ヘッダー側のテーマ切替ボタン（Dockと同期） -->
+    <div>
+      <button id="themeBtnTop" class="btn theme-btn" onclick="cycleTheme()" aria-label="テーマ切替">🌓 Auto</button>
+      <div class="theme-label" id="themeLabelTop" aria-hidden="true">OS設定に追従</div>
+    </div>
   </header>
 
   <!-- 追加フォーム & 手動修正モード -->
@@ -221,6 +242,8 @@
     <input id="dualToggleDock" type="checkbox" onchange="toggleDualDock()"> <span>2試合同時</span>
   </label>
   <button class="btn btn-danger" onclick="bulkDeleteSelected()">一括削除</button>
+  <!-- Dock側のテーマ切替ボタン（ヘッダーと同期） -->
+  <button id="themeBtnDock" class="btn theme-btn" onclick="cycleTheme()" aria-label="テーマ切替">🌓 Auto</button>
 </div>
 
 <script>
@@ -233,7 +256,30 @@
   const sessionStartTs = Date.now();   // このページを開いてからの追加識別
   let selectedNames = new Set();       // 一括削除用
 
-  // 既存データへ新フィールドを補完
+  // ===== テーマ：Auto / Light / Dark =====
+  const THEME_KEY = "iv_theme"; // 'auto' | 'light' | 'dark'
+  function applyTheme(mode){
+    const root = document.documentElement;
+    if(mode === 'light'){ root.setAttribute('data-theme','light'); }
+    else if(mode === 'dark'){ root.setAttribute('data-theme','dark'); }
+    else{ root.removeAttribute('data-theme'); mode = 'auto'; } // Autoは属性外してOS追従
+    localStorage.setItem(THEME_KEY, mode);
+    const label = mode==='auto' ? '🌓 Auto' : (mode==='light'?'☀️ Light':'🌙 Dark');
+    const sub   = mode==='auto' ? 'OS設定に追従' : (mode==='light'?'ライト固定':'ダーク固定');
+    const btnTop = document.getElementById('themeBtnTop');
+    const btnDock= document.getElementById('themeBtnDock');
+    const lblTop = document.getElementById('themeLabelTop');
+    if(btnTop) btnTop.textContent = label;
+    if(btnDock) btnDock.textContent = label;
+    if(lblTop) lblTop.textContent = sub;
+  }
+  function cycleTheme(){
+    const cur = localStorage.getItem(THEME_KEY) || 'auto';
+    const next = cur==='auto' ? 'light' : cur==='light' ? 'dark' : 'auto';
+    applyTheme(next);
+  }
+
+  // ===== 既存データへ新フィールドを補完 =====
   (function migrate(){
     const now = Date.now();
     let changed = false;
@@ -261,7 +307,7 @@
   function tsToString(ts){const d=new Date(ts),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`}
   function prefLabel(p){return p==='survivor'?'サバ希望':p==='hunter'?'ハンター希望':'希望なし'}
 
-  // ===== 回数 & 待機情報 再計算（履歴→単一の真実 + 調整値合算） =====
+  // ===== 回数 & 待機情報 再計算 =====
   function recomputeCountsFromMatches(rebuildTiming=false){
     players.forEach(p=>{ p.sCount=0; p.hCount=0; if(rebuildTiming) p.lastTs=null; });
     const idx = new Map(players.map((p,i)=>[p.name,i]));
@@ -425,7 +471,7 @@
     recomputeCountsFromMatches(true); save(); render();
   }
 
-  // 優先度ソート：aCount昇順 → newcomerBoost → waitScore → name
+  // 優先度ソート
   function priorityOrder(list){
     const now = Date.now();
     function key(p){
@@ -449,7 +495,7 @@
     });
   }
 
-  // 1試合構築（5人必要）
+  // 1試合構築
   function buildOneMatch(act){
     if(act.length < 5) return null;
     const pool = priorityOrder(act).slice(0,5);
@@ -458,7 +504,7 @@
     return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
   }
 
-  // 役割割当：不足度＋希望＋未出場追い風
+  // 役割割当
   function assignRoles(pool){
     function hunterLack(p){
       const a = p.sCount + p.hCount;
@@ -657,6 +703,10 @@
 
   // ===== 初期化 =====
   window.addEventListener("DOMContentLoaded", ()=>{
+    // テーマ初期化
+    applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
+
+    // アプリ本体初期化
     recomputeCountsFromMatches(true);
     $("#manualToggle").checked = manualMode;
     $("#dualToggle").checked = dualMode;
@@ -667,3 +717,4 @@
 </script>
 </body>
 </html>
+
