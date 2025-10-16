@@ -255,6 +255,23 @@
     </details>
   </section>
 
+  <!-- ★ かんたんな使い方（追記セクション） -->
+  <section class="card" style="margin-top:10px">
+    <h3>このアプリのかんたんな使い方</h3>
+    <ol style="margin:6px 0 10px;padding-left:1.2em">
+      <li>上のフォームで<b>名前</b>と<b>希望ロール</b>を入れて〔追加〕</li>
+      <li>参加者が<b>5人以上</b>になったら〔<b>自動選定（確定）</b>〕でサバ4＋ハン1を確定</li>
+      <li>参加者が<b>10人以上</b>なら「<b>2試合同時</b>」にチェックして一気に2枠確定（被りなし）</li>
+      <li>微調整は「<b>手動修正</b>」をON → 名前/希望変更、回数<b>＋/−</b>、<b>手動試合追加</b>が可能</li>
+      <li>抜けた人は行末の<b>削除</b>（履歴からも自動除去して再計算）／左端チェックで<b>一括削除</b>も可</li>
+      <li>配信用に「<b>配信用オーバーレイ</b>」を押すか、OBSブラウザソースで<br>
+        <code>?overlay=1&amp;transparent=1</code> を付けたURLを追加（例：<code>.../index.html?overlay=1&amp;transparent=1&amp;theme=dark&amp;scale=1.1&amp;title=0</code>）</li>
+      <li>ライト/ダークは右上か下部ドックの🌓ボタンで「Auto→Light→Dark」切替</li>
+      <li>データはブラウザに保存（localStorage）。バックアップは〔<b>CSVエクスポート</b>〕で</li>
+    </ol>
+    <p class="muted" style="margin:0">※ データは同一ブラウザ/ドメインで保持されます。シークレットモードや別端末では共有されません。</p>
+  </section>
+
   <p class="muted" style="margin-top:10px">© <span id="year"></span> IdentityV Queue Balancer — クライアントローカル保存</p>
 </div>
 
@@ -846,3 +863,4 @@
 </script>
 </body>
 </html>
+
