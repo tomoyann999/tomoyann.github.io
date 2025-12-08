@@ -94,6 +94,9 @@
     @media(min-width:900px){.overlay-split{grid-template-columns:1fr 1fr}}
     .transparent-bg{background:transparent !important}
     body.transparent-bg{background:transparent !important}
+
+    a{color:var(--primary);text-decoration:none}
+    a:hover{text-decoration:underline}
   </style>
 </head>
 <body>
@@ -103,7 +106,7 @@
       <h1>IdentityV 参加型メンバー自動調整</h1>
       <p class="muted">
         サバ4＋ハン1を<b>総出場回数が平均</b>になるよう自動抽選。新規参加者は初回まで優先。<br>
-        手動修正（回数±・名前/希望編集）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）に対応。
+        手動修正（回数±・名前/希望編集）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）、主催者固定モードに対応。
       </p>
     </div>
     <div style="text-align:right">
@@ -148,7 +151,20 @@
         </label>
         <span id="dualHint" class="muted"></span>
       </div>
-      <p class="muted" style="margin:8px 0 0">抽選は履歴に保存され、常に<b>履歴→再集計＋手動調整</b>で整合します。</p>
+      <!-- 主催者固定モード -->
+      <div class="row" style="margin-top:8px">
+        <label class="row" style="gap:6px" title="主催者を毎試合必ず参加させます">
+          <input id="hostModeToggle" type="checkbox" onchange="toggleHostMode()">
+          <span>主催者を必ず参加させる</span>
+        </label>
+        <select id="hostSelect" style="min-width:180px" onchange="setHost(this.value)">
+          <!-- プレイヤー一覧から自動で埋まる -->
+        </select>
+      </div>
+      <p class="muted" style="margin:8px 0 0">
+        主催者固定 ON 時は、主催者がアクティブにいる場合、その人を毎回の試合メンバーに必ず含めます。<br>
+        2試合同時の場合は A 側の試合に含めます。
+      </p>
     </div>
     <div class="card">
       <h3>直近の試合</h3>
@@ -216,6 +232,7 @@
       <li>上のフォームで<b>名前</b>と<b>希望ロール</b>を入れて〔追加〕</li>
       <li>参加者が<b>5人以上</b>になったら〔<b>自動選定（確定）</b>〕でサバ4＋ハン1を確定</li>
       <li>参加者が<b>10人以上</b>なら「<b>2試合同時</b>」で2枠確定（被りなし）</li>
+      <li>「<b>主催者を必ず参加させる</b>」をON＋主催者名を選ぶと、毎回主催者を含めて抽選（2試合同時時はA側）</li>
       <li>微調整は「<b>手動修正</b>」ON → 名前/希望変更、回数<b>＋/−</b>、<b>手動試合追加</b></li>
       <li>抜けた人は行末の<b>削除</b>（履歴からも除去して再計算）／左端チェックで<b>一括削除</b></li>
       <li>配信用は「<b>配信用オーバーレイ</b>」または OBS で <code>?overlay=1&amp;transparent=1</code> を付けたURL</li>
@@ -225,7 +242,11 @@
     <p class="muted" style="margin:0">※ iOSのSafariタブは通知不可。ホーム画面に追加（PWA）で利用可能。</p>
   </section>
 
-  <p class="muted" style="margin-top:10px">© <span id="year"></span> IdentityV Queue Balancer — クライアントローカル保存</p>
+  <p class="muted" style="margin-top:10px">
+    © <span id="year"></span> IdentityV Queue Balancer — クライアントローカル保存<br>
+    制作：<a href="https://x.com/tomoyann999" target="_blank" rel="noopener noreferrer">X（@tomoyann999）</a> /
+    <a href="https://www.tiktok.com/@tomoyann999" target="_blank" rel="noopener noreferrer">TikTok（@tomoyann999）</a>
+  </p>
 </div>
 
 <!-- 下部固定操作バー（スマホ用） -->
@@ -259,6 +280,10 @@
   const sessionStartTs = Date.now();
   let selectedNames = new Set();
 
+  // 主催者固定モード
+  let hostName = localStorage.getItem("iv_hostName") || "";
+  let hostMode = localStorage.getItem("iv_hostMode") === "1";
+
   // ===== テーマ =====
   const THEME_KEY = "iv_theme";
   function applyTheme(mode){
@@ -286,6 +311,8 @@
   function save(){
     localStorage.setItem("iv_players", JSON.stringify(players));
     localStorage.setItem("iv_matches", JSON.stringify(matches));
+    localStorage.setItem("iv_hostName", hostName || "");
+    localStorage.setItem("iv_hostMode", hostMode ? "1" : "0");
   }
 
   // ===== 初回マイグレーション =====
@@ -375,6 +402,8 @@
       if(m.hunter===old) m.hunter=v;
       m.survivors = m.survivors.map(s=>s===old?v:s);
     }
+    // 主催者名が変わった場合も追随
+    if(hostName === old){ hostName = v; }
     recomputeCountsFromMatches(true); save(); render();
   }
   function editPref(i, val){ players[i].pref = val; save(); render(); }
@@ -383,13 +412,40 @@
   function incH(i){ players[i].hAdj = (players[i].hAdj||0) + 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
   function decH(i){ players[i].hAdj = (players[i].hAdj||0) - 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
 
-  // 削除
+  // 主催者モード
+  function toggleHostMode(){
+    hostMode = $("#hostModeToggle").checked;
+    // 主催者未選択でONにした場合は警告してOFF
+    if(hostMode && (!hostName || !players.some(p=>p.name===hostName))){
+      alert("主催者をドロップダウンから選択してください。");
+      hostMode = false;
+      $("#hostModeToggle").checked = false;
+    }
+    save();
+  }
+  function setHost(name){
+    hostName = name || "";
+    // 主催者が空になったらモードも自動OFF
+    if(!hostName){
+      hostMode = false;
+      const chk = $("#hostModeToggle");
+      if(chk) chk.checked = false;
+    }
+    save();
+    renderHostControls(); // 表示を再整合
+  }
+
   function removePlayer(i){
     const p = players[i]; if(!p) return;
     if(!confirm(`「${p.name}」を完全削除します。\n・名簿から削除\n・関与する試合を履歴から削除\n・残り履歴から回数/待機情報を再計算`)) return;
     const removed = p.name;
     players.splice(i,1);
     selectedNames.delete(removed);
+    // 主催者が消えたら自動で解除
+    if(hostName === removed){
+      hostName = "";
+      hostMode = false;
+    }
     cleanupMatchesAndRecompute();
   }
 
@@ -417,6 +473,11 @@
     if(!confirm(`選択した ${names.length} 名を完全削除します。\n（履歴からも該当試合を削除し、再計算します）\n\n対象: ${preview}`)) return;
     const removeSet = new Set(names);
     players = players.filter(p=>!removeSet.has(p.name));
+    // 主催者がいなくなったら解除
+    if(hostName && !players.some(p=>p.name===hostName)){
+      hostName = "";
+      hostMode = false;
+    }
     selectedNames.clear();
     $("#masterSelect").checked = false;
     cleanupMatchesAndRecompute();
@@ -449,7 +510,7 @@
     }else hint.textContent = "現在は1試合モードです";
   }
 
-  // 抽選
+  // 抽選ロジック
   function priorityOrder(list){
     const now = Date.now();
     function key(p){
@@ -472,6 +533,7 @@
       return ka.name.localeCompare(kb.name);
     });
   }
+
   function assignRoles(pool){
     function hunterLack(p){
       const a = p.sCount + p.hCount;
@@ -493,13 +555,28 @@
     const survivors = pool.filter(p=>p!==hunter).slice().sort((a,b)=>survivorLack(b)-survivorLack(a)).slice(0,4);
     return { hunter, survivors };
   }
+
+  // 主催者考慮込み 1試合構築
   function buildOneMatch(act){
     if(act.length < 5) return null;
-    const pool = priorityOrder(act).slice(0,5);
-    const res = assignRoles(pool);
-    const now = Date.now();
-    return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
+    const hostEnabled = hostMode && hostName && act.some(p=>p.name===hostName);
+    if(!hostEnabled){
+      const pool = priorityOrder(act).slice(0,5);
+      const res = assignRoles(pool);
+      const now = Date.now();
+      return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
+    }else{
+      const prio = priorityOrder(act);
+      const hostP = prio.find(p=>p.name===hostName);
+      const others = prio.filter(p=>p.name!==hostName);
+      if(!hostP || others.length < 4) return null;
+      const pool = [hostP, ...others.slice(0,4)];
+      const res = assignRoles(pool);
+      const now = Date.now();
+      return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
+    }
   }
+
   function pickNext(){
     const activePlayers = players.filter(p=>p.active);
     const actCount = activePlayers.length;
@@ -513,9 +590,27 @@
     }else{
       const prio = priorityOrder(activePlayers);
       if(prio.length < 10){ alert("アクティブが10人未満です"); return; }
-      const firstTen = prio.slice(0,10);
-      const poolA = [firstTen[0], firstTen[2], firstTen[4], firstTen[6], firstTen[8]];
-      const poolB = [firstTen[1], firstTen[3], firstTen[5], firstTen[7], firstTen[9]];
+
+      const hostEnabled = hostMode && hostName && prio.some(p=>p.name===hostName);
+      let poolA, poolB;
+      if(hostEnabled){
+        const hostP = prio.find(p=>p.name===hostName);
+        const others = prio.filter(p=>p!==hostP);
+        if(others.length < 9){
+          // 想定外だが一応フォールバック
+          const firstTen = prio.slice(0,10);
+          poolA = [firstTen[0], firstTen[2], firstTen[4], firstTen[6], firstTen[8]];
+          poolB = [firstTen[1], firstTen[3], firstTen[5], firstTen[7], firstTen[9]];
+        }else{
+          poolA = [hostP, ...others.slice(0,4)];    // 主催者を必ずA側に含める
+          poolB = others.slice(4,9);               // 残り5人でB側
+        }
+      }else{
+        const firstTen = prio.slice(0,10);
+        poolA = [firstTen[0], firstTen[2], firstTen[4], firstTen[6], firstTen[8]];
+        poolB = [firstTen[1], firstTen[3], firstTen[5], firstTen[7], firstTen[9]];
+      }
+
       const mA = assignRoles(poolA);
       const mB = assignRoles(poolB);
       const now = Date.now();
@@ -526,7 +621,6 @@
 
     recomputeCountsFromMatches(true); save(); render();
 
-    // 通知/フォールバック表示
     const last = matches[matches.length-1];
     const second = matches[matches.length-2];
     const isDual = second && Math.abs((last.ts||0)-(second.ts||0))<=2000;
@@ -577,6 +671,7 @@
     updateDualHint();
     updateLastMatchView();
     renderHistory();
+    renderHostControls();
     if(manualMode) fillManualSelectors();
     $("#year").textContent = new Date().getFullYear();
     $("#selCount").textContent = selectedNames.size;
@@ -584,6 +679,25 @@
     $("#dualToggle").checked = dualMode;
     broadcastOverlayState();
   }
+
+  function renderHostControls(){
+    const sel = $("#hostSelect");
+    const chk = $("#hostModeToggle");
+    if(!sel || !chk) return;
+    // 主催者がいなくなっていたら解除
+    if(hostName && !players.some(p=>p.name===hostName)){
+      hostName = "";
+      hostMode = false;
+    }
+    let options = `<option value="">主催者未指定</option>`;
+    players.forEach(p=>{
+      const selected = (p.name === hostName) ? ' selected' : '';
+      options += `<option value="${escapeHtml(p.name)}"${selected}>${escapeHtml(p.name)}</option>`;
+    });
+    sel.innerHTML = options;
+    chk.checked = hostMode && !!hostName;
+  }
+
   function renderTablesOnly(){
     const tbody = $("#playerTbody"); tbody.innerHTML="";
     const now = Date.now();
@@ -592,10 +706,11 @@
       const refTs = p.lastTs!=null ? p.lastTs : p.joinTs;
       const waitMin = Math.floor(Math.max(0, now - refTs) / 60000);
       const newcomer = (p.sCount+p.hCount)===0 ? `<span class="chip">NEW</span>` : "";
+      const isHost = (p.name === hostName);
 
       const nameCell = manualMode
         ? `<input type="text" value="${escapeHtml(p.name)}" style="min-width:160px" onblur="editName(${i}, this.value)">`
-        : `<span>${escapeHtml(p.name)}</span>`;
+        : `<span>${escapeHtml(p.name)}</span>${isHost ? ' <span class="chip">HOST</span>' : ''}`;
 
       const manualControlsS = `
         <div class="row" style="justify-content:flex-end;gap:4px">
@@ -643,6 +758,7 @@
     $("#selCount").textContent = selectedNames.size;
     $("#masterSelect").checked = selectedNames.size>0 && selectedNames.size===players.length;
   }
+
   function updateLastMatchView(){
     const a = $("#lastMatchA");
     const b = $("#lastMatchB");
@@ -664,6 +780,7 @@
     if(showTwo){ b.style.display = "block"; b.innerHTML = htmlFor(second); }
     else{ b.style.display = "none"; }
   }
+
   function renderHistory(){
     const list = $("#historyList"); list.innerHTML="";
     for(let i=matches.length-1;i>=0;i--){
