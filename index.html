@@ -10,93 +10,495 @@
   <meta name="theme-color" content="#2563eb">
 
   <style>
+    /* =========================
+       カラーテーマ・トークン
+    ========================== */
     :root{
-      --bg:#f6f7fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
-      --primary:#2563eb;--primary-fg:#ffffff;--danger:#dc2626;--ring:rgba(37,99,235,.25);
-      --chip:#fff;--shadow:0 1px 2px rgba(0,0,0,.04)
+      --bg:#070b19;
+      --bg-grad:radial-gradient(circle at top, #192447 0, #070b19 55%, #030712 100%);
+      --card:#0f172a;
+      --card-soft:#111827;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --border:#1f2937;
+      --border-subtle:#111827;
+      --primary:#3b82f6;
+      --primary-soft:#1d4ed8;
+      --primary-fg:#e5efff;
+      --danger:#f97373;
+      --danger-soft:#7f1d1d;
+      --ring:rgba(59,130,246,.45);
+      --chip:#020617;
+      --shadow-soft:0 12px 30px rgba(15,23,42,.7);
+      --radius-lg:18px;
+      --radius-md:12px;
+      --radius-sm:999px;
+      --transition-fast:150ms ease-out;
+      --transition-med:200ms ease-out;
     }
-    @media (prefers-color-scheme: dark){
+    @media (prefers-color-scheme: light){
       :root{
-        --bg:#0b1020;--card:#121933;--text:#e6e8ee;--muted:#a5adcc;--border:#27304f;
-        --primary:#4f7cff;--primary-fg:#0b1020;--danger:#ff6b6b;--ring:rgba(79,124,255,.35);
-        --chip:#1b2342;--shadow:0 1px 2px rgba(0,0,0,.5)
+        --bg:#eef2ff;
+        --bg-grad:radial-gradient(circle at top, #dbeafe 0, #e5e7eb 35%, #e5e7eb 100%);
+        --card:#ffffff;
+        --card-soft:#f9fafb;
+        --text:#111827;
+        --muted:#6b7280;
+        --border:#d1d5db;
+        --border-subtle:#e5e7eb;
+        --primary:#2563eb;
+        --primary-soft:#1d4ed8;
+        --primary-fg:#f9fafb;
+        --danger:#dc2626;
+        --danger-soft:#fee2e2;
+        --ring:rgba(37,99,235,.25);
+        --chip:#f3f4f6;
+        --shadow-soft:0 14px 32px rgba(15,23,42,.18);
       }
     }
     :root[data-theme="light"]{
-      --bg:#f6f7fb;--card:#ffffff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
-      --primary:#2563eb;--primary-fg:#ffffff;--danger:#dc2626;--ring:rgba(37,99,235,.25);
-      --chip:#fff;--shadow:0 1px 2px rgba(0,0,0,.04)
+      --bg:#eef2ff;
+      --bg-grad:radial-gradient(circle at top, #dbeafe 0, #e5e7eb 35%, #e5e7eb 100%);
+      --card:#ffffff;
+      --card-soft:#f9fafb;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#d1d5db;
+      --border-subtle:#e5e7eb;
+      --primary:#2563eb;
+      --primary-soft:#1d4ed8;
+      --primary-fg:#f9fafb;
+      --danger:#dc2626;
+      --danger-soft:#fee2e2;
+      --ring:rgba(37,99,235,.25);
+      --chip:#f3f4f6;
+      --shadow-soft:0 14px 32px rgba(15,23,42,.18);
     }
     :root[data-theme="dark"]{
-      --bg:#0b1020;--card:#121933;--text:#e6e8ee;--muted:#a5adcc;--border:#27304f;
-      --primary:#4f7cff;--primary-fg:#0b1020;--danger:#ff6b6b;--ring:rgba(79,124,255,.35);
-      --chip:#1b2342;--shadow:0 1px 2px rgba(0,0,0,.5)
+      --bg:#070b19;
+      --bg-grad:radial-gradient(circle at top, #192447 0, #070b19 55%, #030712 100%);
+      --card:#0f172a;
+      --card-soft:#111827;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --border:#1f2937;
+      --border-subtle:#111827;
+      --primary:#3b82f6;
+      --primary-soft:#1d4ed8;
+      --primary-fg:#e5efff;
+      --danger:#f97373;
+      --danger-soft:#7f1d1d;
+      --ring:rgba(59,130,246,.45);
+      --chip:#020617;
+      --shadow-soft:0 12px 30px rgba(15,23,42,.7);
     }
 
+    /* =========================
+       ベース
+    ========================== */
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;line-height:1.6;transition:background-color .2s ease,color .2s ease}
-    .container{max-width:1100px;margin:0 auto;padding:20px 16px 112px}
-    h1{margin:0 0 6px;font-size:clamp(20px,3vw,28px)}
-    h3{margin:0 0 8px;font-size:clamp(16px,2.2vw,18px)}
-    .muted{color:var(--muted)}
+    body{
+      margin:0;
+      background:var(--bg-grad);
+      color:var(--text);
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+      line-height:1.6;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+      transition:background-color var(--transition-med),color var(--transition-med);
+    }
+    .container{
+      max-width:1120px;
+      margin:0 auto;
+      padding:20px 16px 120px;
+    }
+    h1{
+      margin:0 0 6px;
+      font-size:clamp(22px,3.2vw,30px);
+      letter-spacing:.02em;
+    }
+    h3{
+      margin:0 0 8px;
+      font-size:clamp(16px,2.1vw,18px);
+      letter-spacing:.01em;
+    }
+    .muted{color:var(--muted);font-size:14px}
     .grid{display:grid;gap:16px}
-    @media(min-width:900px){.grid-2{grid-template-columns:1fr 1fr}}
+    @media(min-width:900px){.grid-2{grid-template-columns:1.1fr .9fr}}
 
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input[type="text"],select{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:transparent;color:var(--text);font-size:16px;min-height:44px;outline:none}
-    input:focus,select:focus{box-shadow:0 0 0 4px var(--ring);border-color:var(--primary)}
-    .btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer;font-size:15px;min-height:44px}
-    .btn:hover{background:color-mix(in oklab, var(--card), var(--text) 3%)}
-    .btn-primary{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
-    .btn-primary:hover{filter:brightness(.97)}
-    .btn-danger{color:var(--danger);border-color:color-mix(in oklab, var(--danger), #fff 70%)}
-    .btn-danger:hover{background:color-mix(in oklab, var(--danger), var(--card) 92%)}
-    .tiny{font-size:13px;padding:6px 10px;min-height:36px}
-    .chip{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;background:var(--chip);margin-left:6px}
+    /* =========================
+       カード / レイアウト
+    ========================== */
+    .card{
+      position:relative;
+      background:linear-gradient(145deg, color-mix(in oklab, var(--card-soft), #000 6%), var(--card));
+      border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+      padding:14px 16px;
+      box-shadow:var(--shadow-soft);
+      overflow:hidden;
+    }
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background:radial-gradient(circle at 0 0, rgba(59,130,246,.09), transparent 55%);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .card > *{position:relative;z-index:1}
 
-    table{width:100%;border-collapse:collapse}
-    thead th{font-size:12px;color:var(--muted);text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);background:color-mix(in oklab, var(--card), #fff 5%)}
-    tbody td{padding:8px;border-bottom:1px solid var(--border);vertical-align:middle}
-    .num{text-align:right;min-width:42px}
-    .tag{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46}
-    .tag-red{border-color:#fecaca;background:#fef2f2;color:#991b1b}
-    .last{border:1px dashed var(--border);border-radius:10px;padding:10px;background:color-mix(in oklab, var(--card), #fff 4%)}
-    .two-col{display:grid;gap:10px}
-    @media(min-width:700px){.two-col{grid-template-columns:1fr 1fr}}
-    .lastTitle{font-weight:700;margin-bottom:6px}
-    .notice{font-size:12px;color:#065f46;background:#ecfdf5;border:1px solid #d1fae5;border-radius:8px;padding:6px 8px}
-    .warn{font-size:12px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:6px 8px}
-    .table-wrap{overflow-x:auto; scrollbar-gutter:stable both-edges}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row.center{justify-content:center}
+    .row.space-between{justify-content:space-between}
 
     @media(max-width:560px){
-      thead th, tbody td{padding:6px}
-      .toolbar > *{margin-top:4px}
-      .container{padding-bottom:148px}
+      .container{padding-bottom:150px}
+      .row{gap:6px}
     }
 
-    .dock{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:30}
-    .dock .btn{min-width:128px}
-    .theme-btn{min-width:auto;padding:8px 10px}
-    .theme-label{font-size:12px;color:var(--muted)}
-    #miniLineup{font-size:12px;border-left:4px solid var(--primary);padding-left:8px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* =========================
+       フォーム・ボタン
+    ========================== */
+    input[type="text"],select{
+      border-radius:999px;
+      border:1px solid var(--border-subtle);
+      padding:10px 14px;
+      background:rgba(15,23,42,.85);
+      color:var(--text);
+      font-size:15px;
+      min-height:42px;
+      outline:none;
+      transition:border-color var(--transition-fast),box-shadow var(--transition-fast),background-color var(--transition-fast),transform var(--transition-fast);
+      backdrop-filter:blur(12px);
+    }
+    :root[data-theme="light"] input[type="text"],
+    :root[data-theme="light"] select{
+      background:rgba(255,255,255,.9);
+    }
+    input::placeholder{color:color-mix(in oklab, var(--muted), #000 15%)}
+    input:focus,select:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 1px var(--primary-soft),0 0 0 8px var(--ring);
+      transform:translateY(-1px);
+    }
 
-    /* Overlay（配信用） */
-    .overlay-root{display:grid;gap:10px;min-height:100vh;align-content:center;justify-items:center;padding:16px}
-    .overlay-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);min-width:min(92vw,1200px)}
-    .overlay-title{font-weight:800;font-size:clamp(20px,3.5vw,28px);margin:0 0 6px}
-    .overlay-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:clamp(18px,2.8vw,24px)}
-    .overlay-tag{display:inline-block;font-size:.8em;padding:.25em .6em;border-radius:999px;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46}
-    .overlay-tag-red{border-color:#fecaca;background:#fef2f2;color:#991b1b}
-    .overlay-time{font-size:.85em;color:var(--muted);margin-bottom:4px}
+    .btn{
+      position:relative;
+      border-radius:999px;
+      border:1px solid var(--border-subtle);
+      background:linear-gradient(135deg, color-mix(in oklab,var(--card-soft),#fff 6%), var(--card));
+      color:var(--text);
+      padding:9px 14px;
+      min-height:40px;
+      cursor:pointer;
+      font-size:14px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      transition:background-color var(--transition-fast),border-color var(--transition-fast),transform var(--transition-fast),box-shadow var(--transition-fast),color var(--transition-fast);
+      box-shadow:0 4px 10px rgba(15,23,42,.35);
+      white-space:nowrap;
+    }
+    .btn:hover{
+      transform:translateY(-1px);
+      box-shadow:0 8px 18px rgba(15,23,42,.45);
+      background:linear-gradient(135deg, color-mix(in oklab,var(--card-soft),#fff 12%), var(--card));
+    }
+    .btn:active{
+      transform:translateY(0);
+      box-shadow:0 3px 8px rgba(15,23,42,.3);
+    }
+
+    .btn-primary{
+      background:linear-gradient(135deg, var(--primary-soft), var(--primary));
+      border-color:color-mix(in oklab, var(--primary-soft), #000 12%);
+      color:var(--primary-fg);
+      box-shadow:0 6px 16px rgba(37,99,235,.55);
+    }
+    .btn-primary:hover{
+      background:linear-gradient(135deg, #4f8dfc, var(--primary));
+      box-shadow:0 10px 22px rgba(37,99,235,.65);
+    }
+    .btn-danger{
+      color:var(--danger);
+      border-color:color-mix(in oklab,var(--danger-soft),#fff 40%);
+      background:linear-gradient(135deg, rgba(127,29,29,.2), rgba(15,23,42,.96));
+    }
+    .btn-danger:hover{
+      background:linear-gradient(135deg, rgba(220,38,38,.16), rgba(15,23,42,.98));
+      box-shadow:0 8px 18px rgba(127,29,29,.55);
+    }
+    .tiny{font-size:12px;padding:6px 10px;min-height:32px}
+    .theme-btn{min-width:auto;padding-inline:10px}
+
+    /* =========================
+       チップ・タグ・メッセージ
+    ========================== */
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      font-size:11px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid color-mix(in oklab, var(--primary), #000 20%);
+      color:var(--primary-fg);
+      background:radial-gradient(circle at 0 0, rgba(59,130,246,.5), rgba(15,23,42,.9));
+      box-shadow:0 4px 10px rgba(15,23,42,.7);
+    }
+
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      font-size:11px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color:var(--muted);
+      text-align:left;
+      padding:8px 10px;
+      border-bottom:1px solid var(--border);
+      background:linear-gradient(90deg, rgba(15,23,42,.9), rgba(15,23,42,.7));
+      backdrop-filter:blur(10px);
+    }
+    tbody td{
+      padding:8px 10px;
+      border-bottom:1px solid rgba(148,163,184,.2);
+      vertical-align:middle;
+      font-size:14px;
+    }
+    tbody tr:hover{
+      background:radial-gradient(circle at 0 0, rgba(59,130,246,.14), transparent 65%);
+    }
+    .num{text-align:right;min-width:46px}
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(45,212,191,.7);
+      background:linear-gradient(135deg, rgba(16,185,129,.1), rgba(15,23,42,.95));
+      color:#ccfbf1;
+    }
+    .tag-red{
+      border-color:rgba(248,113,113,.8);
+      background:linear-gradient(135deg, rgba(248,113,113,.12), rgba(15,23,42,.96));
+      color:#fee2e2;
+    }
+
+    .last{
+      border-radius:var(--radius-md);
+      border:1px solid var(--border);
+      padding:10px 12px;
+      background:radial-gradient(circle at top left, rgba(15,23,42,.9), rgba(15,23,42,.98));
+      box-shadow:0 8px 18px rgba(15,23,42,.7);
+    }
+    .two-col{display:grid;gap:10px}
+    @media(min-width:700px){.two-col{grid-template-columns:1fr 1fr}}
+    .lastTitle{font-weight:600;margin-bottom:6px;font-size:13px;color:var(--muted)}
+
+    .notice{
+      font-size:12px;
+      color:#bbf7d0;
+      background:linear-gradient(135deg, rgba(22,163,74,.22),rgba(15,23,42,.96));
+      border:1px solid rgba(22,163,74,.9);
+      border-radius:var(--radius-md);
+      padding:6px 8px;
+    }
+    .warn{
+      font-size:12px;
+      color:#fecaca;
+      background:linear-gradient(135deg, rgba(220,38,38,.28),rgba(15,23,42,.98));
+      border:1px solid rgba(248,113,113,.9);
+      border-radius:var(--radius-md);
+      padding:6px 8px;
+    }
+
+    .table-wrap{
+      overflow-x:auto;
+      scrollbar-gutter:stable both-edges;
+    }
+    .table-wrap::-webkit-scrollbar{height:6px}
+    .table-wrap::-webkit-scrollbar-thumb{
+      background:rgba(148,163,184,.6);
+      border-radius:999px;
+    }
+
+    /* =========================
+       固定ドック（スマホ用）
+    ========================== */
+    .dock{
+      position:fixed;
+      left:0;right:0;bottom:0;
+      background:linear-gradient(180deg, rgba(15,23,42,.9), rgba(3,7,18,.98));
+      border-top:1px solid rgba(148,163,184,.3);
+      padding:9px 12px 10px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:center;
+      align-items:center;
+      z-index:30;
+      backdrop-filter:blur(18px);
+      box-shadow:0 -12px 24px rgba(15,23,42,.8);
+    }
+    .dock .btn{min-width:120px}
+    #miniLineup{
+      font-size:12px;
+      border-left:3px solid var(--primary);
+      padding-left:8px;
+      max-width:100%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      color:var(--muted);
+    }
+
+    /* =========================
+       オーバーレイ（配信用）
+    ========================== */
+    .overlay-root{
+      display:grid;
+      gap:10px;
+      min-height:100vh;
+      align-content:center;
+      justify-items:center;
+      padding:16px;
+    }
+    .overlay-card{
+      background:rgba(15,23,42,.92);
+      border-radius:var(--radius-lg);
+      border:1px solid rgba(148,163,184,.55);
+      padding:16px 22px;
+      min-width:min(92vw,1200px);
+      box-shadow:0 18px 40px rgba(15,23,42,.9);
+      backdrop-filter:blur(16px);
+    }
+    .overlay-title{
+      font-weight:800;
+      font-size:clamp(20px,3.4vw,28px);
+      margin:0 0 4px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .overlay-row{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+      font-size:clamp(18px,2.6vw,24px);
+    }
+    .overlay-tag{
+      display:inline-flex;
+      align-items:center;
+      font-size:.8em;
+      padding:.25em .7em;
+      border-radius:999px;
+      border:1px solid rgba(34,197,94,.8);
+      background:linear-gradient(135deg, rgba(16,185,129,.16), rgba(15,23,42,.98));
+      color:#bbf7d0;
+    }
+    .overlay-tag-red{
+      border-color:rgba(248,113,113,.9);
+      background:linear-gradient(135deg, rgba(248,113,113,.2), rgba(15,23,42,.98));
+      color:#fee2e2;
+    }
+    .overlay-time{
+      font-size:.82em;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
     .overlay-split{display:grid;gap:12px}
     @media(min-width:900px){.overlay-split{grid-template-columns:1fr 1fr}}
     .transparent-bg{background:transparent !important}
     body.transparent-bg{background:transparent !important}
 
-    a{color:var(--primary);text-decoration:none}
-    a:hover{text-decoration:underline}
+    /* =========================
+       ヘッダー / フッター
+    ========================== */
+    header .muted{font-size:13px}
+    .theme-label{font-size:11px;color:var(--muted);margin-top:4px;text-align:right}
+
+    a{color:var(--primary);text-decoration:none;transition:color var(--transition-fast),text-shadow var(--transition-fast)}
+    a:hover{
+      text-decoration:underline;
+      text-shadow:0 0 8px color-mix(in oklab,var(--primary),#fff 40%);
+    }
+
+    /* =========================
+       モーダル
+    ========================== */
+    dialog{
+      border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+      background:rgba(15,23,42,.96);
+      box-shadow:0 18px 40px rgba(15,23,42,.85);
+      backdrop-filter:blur(20px);
+    }
+
+    /* =========================
+       メディアクエリ細かい調整
+    ========================== */
+    @media(max-width:720px){
+      header .row{align-items:flex-start}
+      header .row > div{flex:1 1 100%}
+    }
+
+    /* ===============================
+       ★ ライトテーマ：視認性改善
+       =============================== */
+    :root[data-theme="light"] .last{
+      background:#ffffff !important;
+      border:1px solid #d4d8df !important;
+      color:#1f2937 !important;
+      box-shadow:0 3px 8px rgba(0,0,0,0.07);
+    }
+    :root[data-theme="light"] .last .tag{
+      background:#e0f7ef !important;
+      border-color:#0d9488 !important;
+      color:#065f46 !important;
+    }
+    :root[data-theme="light"] .last .tag-red{
+      background:#fde2e2 !important;
+      border-color:#dc2626 !important;
+      color:#7f1d1d !important;
+    }
+
+    :root[data-theme="light"] table thead th{
+      background:#f2f4f7 !important;
+      color:#374151 !important;
+      border-bottom:1px solid #d1d5db !important;
+    }
+
+    :root[data-theme="light"] tbody tr:hover{
+      background:#f7f9fc !important;
+    }
+
+    :root[data-theme="light"] .chip{
+      background:#e9ecf3 !important;
+      color:#1f2937 !important;
+      border-color:#c4c9d4 !important;
+      box-shadow:none !important;
+    }
+
+    :root[data-theme="light"] .overlay-card{
+      background:rgba(255,255,255,0.92) !important;
+      border:1px solid #d5d7dd !important;
+      color:#1f2937 !important;
+      box-shadow:0 8px 20px rgba(0,0,0,0.08) !important;
+    }
+    :root[data-theme="light"] .overlay-tag{
+      background:#e0f7ef !important;
+      border-color:#0d9488 !important;
+      color:#065f46 !important;
+    }
+    :root[data-theme="light"] .overlay-tag-red{
+      background:#fde2e2 !important;
+      border-color:#dc2626 !important;
+      color:#7f1d1d !important;
+    }
   </style>
 </head>
 <body>
@@ -158,7 +560,6 @@
           <span>主催者を必ず参加させる</span>
         </label>
         <select id="hostSelect" style="min-width:180px" onchange="setHost(this.value)">
-          <!-- プレイヤー一覧から自動で埋まる -->
         </select>
       </div>
       <p class="muted" style="margin:8px 0 0">
@@ -259,7 +660,7 @@
 </div>
 
 <!-- iOSガイド（モーダル） -->
-<dialog id="iosGuide" style="max-width:580px;border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--card);color:var(--text)">
+<dialog id="iosGuide">
   <h3 style="margin:0 0 8px">iOSで通知を使う手順</h3>
   <ol style="margin:0 0 10px;padding-left:1.2em">
     <li>Safariでこのページを開く</li>
@@ -402,7 +803,6 @@
       if(m.hunter===old) m.hunter=v;
       m.survivors = m.survivors.map(s=>s===old?v:s);
     }
-    // 主催者名が変わった場合も追随
     if(hostName === old){ hostName = v; }
     recomputeCountsFromMatches(true); save(); render();
   }
@@ -415,7 +815,6 @@
   // 主催者モード
   function toggleHostMode(){
     hostMode = $("#hostModeToggle").checked;
-    // 主催者未選択でONにした場合は警告してOFF
     if(hostMode && (!hostName || !players.some(p=>p.name===hostName))){
       alert("主催者をドロップダウンから選択してください。");
       hostMode = false;
@@ -425,14 +824,13 @@
   }
   function setHost(name){
     hostName = name || "";
-    // 主催者が空になったらモードも自動OFF
     if(!hostName){
       hostMode = false;
       const chk = $("#hostModeToggle");
       if(chk) chk.checked = false;
     }
     save();
-    renderHostControls(); // 表示を再整合
+    renderHostControls();
   }
 
   function removePlayer(i){
@@ -441,7 +839,6 @@
     const removed = p.name;
     players.splice(i,1);
     selectedNames.delete(removed);
-    // 主催者が消えたら自動で解除
     if(hostName === removed){
       hostName = "";
       hostMode = false;
@@ -473,7 +870,6 @@
     if(!confirm(`選択した ${names.length} 名を完全削除します。\n（履歴からも該当試合を削除し、再計算します）\n\n対象: ${preview}`)) return;
     const removeSet = new Set(names);
     players = players.filter(p=>!removeSet.has(p.name));
-    // 主催者がいなくなったら解除
     if(hostName && !players.some(p=>p.name===hostName)){
       hostName = "";
       hostMode = false;
@@ -597,13 +993,12 @@
         const hostP = prio.find(p=>p.name===hostName);
         const others = prio.filter(p=>p!==hostP);
         if(others.length < 9){
-          // 想定外だが一応フォールバック
           const firstTen = prio.slice(0,10);
           poolA = [firstTen[0], firstTen[2], firstTen[4], firstTen[6], firstTen[8]];
           poolB = [firstTen[1], firstTen[3], firstTen[5], firstTen[7], firstTen[9]];
         }else{
-          poolA = [hostP, ...others.slice(0,4)];    // 主催者を必ずA側に含める
-          poolB = others.slice(4,9);               // 残り5人でB側
+          poolA = [hostP, ...others.slice(0,4)];
+          poolB = others.slice(4,9);
         }
       }else{
         const firstTen = prio.slice(0,10);
@@ -684,7 +1079,6 @@
     const sel = $("#hostSelect");
     const chk = $("#hostModeToggle");
     if(!sel || !chk) return;
-    // 主催者がいなくなっていたら解除
     if(hostName && !players.some(p=>p.name===hostName)){
       hostName = "";
       hostMode = false;
@@ -823,7 +1217,6 @@
     render();
     $("#year").textContent = new Date().getFullYear();
 
-    // 通知ボタン 表示制御 & ミニパネル初期表示
     try{
       const nbtn = document.getElementById('notifyBtn');
       const ibtn = document.getElementById('iosGuideBtn');
@@ -841,6 +1234,7 @@
 
   // ===== 配信用オーバーレイ =====
   const overlayChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('iv_overlay') : null;
+
   function getOverlayMatches(){
     if(!matches || matches.length===0) return [];
     const last = matches[matches.length-1];
@@ -848,19 +1242,23 @@
     const two = second && Math.abs((last.ts||0)-(second.ts||0))<=2000;
     return two ? [second,last] : [last];
   }
+
   function broadcastOverlayState(){
     if(!overlayChannel) return;
     const items = getOverlayMatches().map(m=>({ ts:m.ts, hunter:m.hunter, survivors:m.survivors }));
     overlayChannel.postMessage({type:'state', payload:{ t:Date.now(), items }});
   }
+
   function openOverlay(){
     const url = new URL(location.href);
     url.searchParams.set('overlay','1');
     window.open(url.toString(), 'overlay', 'width=1200,height=340,noopener,noreferrer');
   }
+
   (function initOverlayMode(){
     const params = new URLSearchParams(location.search);
     if(params.get('overlay')!=='1') return;
+
     if(params.get('transparent')==='1'){
       document.documentElement.classList.add('transparent-bg');
       document.body.classList.add('transparent-bg');
@@ -873,21 +1271,26 @@
     }
     const scale = parseFloat(params.get('scale') || '1');
     const hideTitle = params.get('title') === '0';
+
     document.body.innerHTML = `
       <div id="ovRoot" class="overlay-root" style="transform:scale(${isFinite(scale)?scale:1}); transform-origin: top center;">
         <div id="ovWrap" class="overlay-split"></div>
       </div>
     `;
     document.title = '対戦リスト（配信用）';
-    renderOverlay(getOverlayMatches());
-    if(overlayChannel){
-      overlayChannel.onmessage = (ev)=>{
-        if(!ev || !ev.data || ev.data.type!=='state') return;
-        const items = ev.data.payload?.items || [];
-        renderOverlay(items.map(x=>({ts:x.ts, hunter:x.hunter, survivors:x.survivors})));
-      };
+
+    function refreshMatchesFromStorage(){
+      try{
+        matches = JSON.parse(localStorage.getItem('iv_matches') || '[]');
+      }catch(_e){}
     }
-    setInterval(()=>{ try{ renderOverlay(getOverlayMatches()); }catch(_e){} }, 3000);
+
+    function renderOverlayFromLocal(){
+      refreshMatchesFromStorage();
+      const items = getOverlayMatches();
+      renderOverlay(items);
+    }
+
     function renderOverlay(items){
       const wrap = document.getElementById('ovWrap');
       if(!wrap) return;
@@ -912,6 +1315,28 @@
         wrap.appendChild(card);
       });
     }
+
+    // 初回描画（ローカルストレージから）
+    renderOverlayFromLocal();
+
+    // BroadcastChannel 経由で即時更新
+    if(overlayChannel){
+      overlayChannel.onmessage = (ev)=>{
+        if(!ev || !ev.data || ev.data.type!=='state') return;
+        const items = ev.data.payload?.items || [];
+        renderOverlay(items.map(x=>({ts:x.ts, hunter:x.hunter, survivors:x.survivors})));
+      };
+    }
+
+    // 他ウィンドウから localStorage が更新されたときにも追従
+    window.addEventListener('storage', (e)=>{
+      if(e.key === 'iv_matches'){
+        renderOverlayFromLocal();
+      }
+    });
+
+    // 念のため数秒おきに同期（file:で storage イベントが飛ばないケース対策）
+    setInterval(()=>{ try{ renderOverlayFromLocal(); }catch(_e){} }, 5000);
   })();
 
   // ===== 通知（SW登録・権限・送信） =====
@@ -920,14 +1345,15 @@
       try { await navigator.serviceWorker.register('./sw.js'); } catch(e) { console.warn('Service Worker 登録失敗', e); }
     }
   })();
+
   async function enableLineupNotifications(){
     if (!('Notification' in window)) { alert('このブラウザは通知に未対応です'); return; }
     const res = await Notification.requestPermission();
     if (res !== 'granted') { alert('通知が許可されませんでした'); return; }
     alert('通知を有効化しました。試合確定時に通知が届きます。');
   }
+
   async function notifyLatestLineup(matchesForNotify){
-    // 非対応環境（iOS Safariタブ等）：ミニパネルのみ更新
     if (!notificationsSupported()){
       try{
         const text = Array.isArray(matchesForNotify) && matchesForNotify.length === 2
@@ -938,7 +1364,6 @@
       }catch(e){ console.warn('mini panel 更新失敗', e); }
       return;
     }
-    // 対応環境（Android/PC/iOS PWA）
     try{
       if (Notification.permission !== 'granted') return;
       const reg = await navigator.serviceWorker.ready;
