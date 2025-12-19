@@ -1,6 +1,10 @@
 /* =========================
+   style.css（完全版）
+   ========================= */
+
+/* =========================
    カラーテーマ・トークン
-========================== */
+========================= */
 :root{
   --bg:#070b19;
   --bg-grad:radial-gradient(circle at top, #192447 0, #070b19 55%, #030712 100%);
@@ -83,7 +87,7 @@
 
 /* =========================
    ベース
-========================== */
+========================= */
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
@@ -115,6 +119,9 @@ h3{
 .grid{display:grid;gap:16px}
 @media(min-width:900px){.grid-2{grid-template-columns:1.1fr .9fr}}
 
+/* =========================
+   カード / レイアウト
+========================= */
 .card{
   position:relative;
   background:linear-gradient(145deg, color-mix(in oklab, var(--card-soft), #000 6%), var(--card));
@@ -143,7 +150,9 @@ h3{
   .row{gap:6px}
 }
 
-/* フォーム・ボタン */
+/* =========================
+   フォーム・ボタン
+========================= */
 input[type="text"],select{
   border-radius:999px;
   border:1px solid var(--border-subtle);
@@ -194,6 +203,7 @@ input:focus,select:focus{
   transform:translateY(0);
   box-shadow:0 3px 8px rgba(15,23,42,.3);
 }
+
 .btn-primary{
   background:linear-gradient(135deg, var(--primary-soft), var(--primary));
   border-color:color-mix(in oklab, var(--primary-soft), #000 12%);
@@ -216,7 +226,9 @@ input:focus,select:focus{
 .tiny{font-size:12px;padding:6px 10px;min-height:32px}
 .theme-btn{min-width:auto;padding-inline:10px}
 
-/* チップ・テーブル */
+/* =========================
+   チップ・タグ・メッセージ
+========================= */
 .chip{
   display:inline-flex;
   align-items:center;
@@ -306,7 +318,9 @@ tbody tr:hover{
   border-radius:999px;
 }
 
-/* 固定ドック（スマホ用） */
+/* =========================
+   固定ドック（スマホ用）
+========================= */
 .dock{
   position:fixed;
   left:0;right:0;bottom:0;
@@ -334,7 +348,9 @@ tbody tr:hover{
   color:var(--muted);
 }
 
-/* オーバーレイ（配信用） */
+/* =========================
+   オーバーレイ（配信用）
+========================= */
 .overlay-root{
   display:grid;
   gap:10px;
@@ -391,7 +407,9 @@ tbody tr:hover{
 .transparent-bg{background:transparent !important}
 body.transparent-bg{background:transparent !important}
 
-/* ヘッダー / フッター */
+/* =========================
+   ヘッダー / フッター
+========================= */
 header .muted{font-size:13px}
 .theme-label{font-size:11px;color:var(--muted);margin-top:4px;text-align:right}
 
@@ -401,7 +419,9 @@ a:hover{
   text-shadow:0 0 8px color-mix(in oklab,var(--primary),#fff 40%);
 }
 
-/* モーダル */
+/* =========================
+   モーダル
+========================= */
 dialog{
   border-radius:var(--radius-lg);
   border:1px solid var(--border);
@@ -410,13 +430,17 @@ dialog{
   backdrop-filter:blur(20px);
 }
 
-/* メディアクエリ細かい調整 */
+/* =========================
+   メディアクエリ細かい調整
+========================= */
 @media(max-width:720px){
   header .row{align-items:flex-start}
   header .row > div{flex:1 1 100%}
 }
 
-/* ★ ライトテーマ：視認性改善 */
+/* ===============================
+   ★ ライトテーマ：視認性改善
+=============================== */
 :root[data-theme="light"] .last{
   background:#ffffff !important;
   border:1px solid #d4d8df !important;
@@ -464,37 +488,94 @@ dialog{
   color:#7f1d1d !important;
 }
 
-/* ===============================
-   ★追加：ハンターのみローテーション表示
-=============================== */
-.queue-wrap{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
+/* =========================================
+   ★スマホ視認性改善：参加者一覧をカード表示
+   （PCレイアウトは完全保持）
+========================================= */
+@media (max-width: 720px){
+  .container{ padding: 16px 12px 160px; }
+  .card{ padding: 14px 12px; }
+
+  input[type="text"], select{
+    min-height: 46px;
+    font-size: 16px;
+  }
+  .btn{
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+  .tiny{
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  table thead{ display: none; }
+
+  #playerTbody tr{
+    display: block;
+    margin: 10px 0;
+    border: 1px solid rgba(148,163,184,.25);
+    border-radius: var(--radius-md);
+    background: radial-gradient(circle at top left, rgba(15,23,42,.86), rgba(15,23,42,.98));
+    box-shadow: 0 8px 18px rgba(15,23,42,.55);
+    overflow: hidden;
+  }
+
+  #playerTbody td{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(148,163,184,.18);
+    font-size: 14px;
+  }
+  #playerTbody td:last-child{ border-bottom: none; }
+
+  #playerTbody td::before{
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: .04em;
+    flex: 0 0 auto;
+    min-width: 90px;
+  }
+
+  #playerTbody td[data-label="名前（✓=アクティブ）"]{
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #playerTbody td[data-label="名前（✓=アクティブ）"]::before{
+    align-self: flex-start;
+  }
+  #playerTbody td[data-label="名前（✓=アクティブ）"] .row{
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  #playerTbody td[data-label="操作"]{
+    justify-content: flex-end;
+  }
+  #playerTbody td[data-label="操作"]::before{
+    display: none;
+  }
+
+  .table-wrap{ overflow-x: visible; }
 }
-.queue-chip{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid rgba(248,113,113,.85);
-  background:linear-gradient(135deg, rgba(248,113,113,.14), rgba(15,23,42,.96));
-  color:#fee2e2;
-  box-shadow:0 6px 14px rgba(127,29,29,.35);
+
+/* ✅ 修正ポイント：
+   NG: :root[data-theme="light"] @media (...)
+   OK: @media (...) { :root[data-theme="light"] ... }
+*/
+@media (max-width: 720px){
+  :root[data-theme="light"] #playerTbody tr{
+    background: #ffffff;
+    border-color: #d4d8df;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  }
+  :root[data-theme="light"] #playerTbody td{
+    border-bottom: 1px solid rgba(17,24,39,.08);
+  }
 }
-.queue-chip .qnum{
-  display:inline-flex;
-  min-width:24px;
-  justify-content:center;
-  font-weight:800;
-  color:#fecaca;
-}
-:root[data-theme="light"] .queue-chip{
-  background:#fff0f0;
-  color:#7f1d1d;
-  border-color:#dc2626;
-  box-shadow:0 3px 10px rgba(220,38,38,.12);
-}
-:root[data-theme="light"] .queue-chip .qnum{color:#991b1b;}
