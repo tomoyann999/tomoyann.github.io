@@ -1,10 +1,14 @@
+<!-- =========================
+     index.html（完全版）
+     ========================= -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>IdentityV 参加型メンバー自動調整</title>
-  <meta name="description" content="第5人格の参加型配信用：サバ4＋ハン1の自動抽選＆平均化。新規優先・手動修正・一括削除・2試合同時・OBSオーバーレイ・スマホ通知（iOSはPWA）対応。">
+  <meta name="description" content="第5人格の参加型配信用：サバ4＋ハン1の自動抽選＆平均化。新規優先・手動修正・削除/一括削除・2試合同時・主催者固定・OBSオーバーレイ・通知（iOSはPWA）対応。">
+
   <!-- PWA/通知 -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#2563eb">
@@ -18,8 +22,7 @@
       <h1>IdentityV 参加型メンバー自動調整</h1>
       <p class="muted">
         サバ4＋ハン1を<b>総出場回数が平均</b>になるよう自動抽選。新規参加者は初回まで優先。<br>
-        手動修正（回数±・名前/希望編集）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）、主催者固定モードに対応。<br>
-        さらに「<b>ハンターのみ</b>」は登録順ローテーション（別枠表示）に対応。
+        手動修正（回数±・名前/希望編集・手動試合登録）、削除・一括削除、<b>2試合同時</b>（アクティブ10人以上）、主催者固定、ハンターのみローテ表示に対応。
       </p>
     </div>
     <div style="text-align:right">
@@ -79,6 +82,19 @@
         主催者固定 ON 時は、主催者がアクティブにいる場合、その人を毎回の試合メンバーに必ず含めます。<br>
         2試合同時の場合は A 側の試合に含めます。
       </p>
+
+      <!-- ハンターのみローテ表示（別枠） -->
+      <div class="card" style="margin-top:12px; box-shadow:none;">
+        <div class="row space-between" style="align-items:baseline">
+          <h3 style="margin:0">ハンターのみ ローテーション</h3>
+          <span class="muted" style="font-size:12px">（登録順 / アクティブのみ）</span>
+        </div>
+        <div id="hunterOnlyQueue" class="last" style="margin-top:8px">—</div>
+        <p class="muted" style="margin:8px 0 0">
+          ※ ハンターのみが複数いる場合、ハンター役は<b>登録順でローテーション</b>します。<br>
+          ※ ただしサバイバー不足（必要人数に満たない）時は、ハンターのみもサバに割り当てられる場合があります。
+        </p>
+      </div>
     </div>
 
     <div class="card">
@@ -87,17 +103,6 @@
         <div id="lastMatchA" class="last">まだ試合はありません</div>
         <div id="lastMatchB" class="last" style="display:none">—</div>
       </div>
-    </div>
-  </section>
-
-  <!-- ★追加：ハンターのみローテーション表示（別枠） -->
-  <section class="card" style="margin-top:10px">
-    <div class="row" style="justify-content:space-between;align-items:baseline">
-      <h3>ハンターのみローテーション（登録順）</h3>
-      <span class="muted">※ ハンターに選ばれると末尾へ（順番が回ります）</span>
-    </div>
-    <div id="hunterOnlyQueue" class="queue-wrap" style="margin-top:8px">
-      <span class="muted">該当者はいません</span>
     </div>
   </section>
 
