@@ -1,4 +1,8 @@
-// ===== 状態 =====
+/* =========================
+   app.js（完全版）
+   ========================= */
+
+/* ===== 状態 ===== */
 let players = JSON.parse(localStorage.getItem("iv_players") || "[]");
 let matches = JSON.parse(localStorage.getItem("iv_matches") || "[]");
 let manualMode = false;
@@ -7,15 +11,16 @@ let lastCreateCount = 0;
 const sessionStartTs = Date.now();
 let selectedNames = new Set();
 
-// 主催者固定モード
+/* 主催者固定モード */
 let hostName = localStorage.getItem("iv_hostName") || "";
 let hostMode = localStorage.getItem("iv_hostMode") === "1";
 
-// ★追加：ハンターのみローテーション（登録順）を別キューで管理
-// 既存の joinTs / priority に影響を与えないため、順番は iv_hunterOnlyQueue で保持する
-let hunterOnlyQueue = JSON.parse(localStorage.getItem("iv_hunterOnlyQueue") || "[]");
+/* ハンターのみローテ（登録順） */
+const HUNTER_ROT_KEY = "iv_hunterOnlyRotIdx";
+let hunterOnlyRotIdx = parseInt(localStorage.getItem(HUNTER_ROT_KEY) || "0", 10);
+if (!Number.isFinite(hunterOnlyRotIdx) || hunterOnlyRotIdx < 0) hunterOnlyRotIdx = 0;
 
-// ===== テーマ =====
+/* ===== テーマ ===== */
 const THEME_KEY = "iv_theme";
 function applyTheme(mode){
   const root = document.documentElement;
@@ -23,7 +28,6 @@ function applyTheme(mode){
   else if(mode === 'dark'){ root.setAttribute('data-theme','dark'); }
   else{ root.removeAttribute('data-theme'); mode = 'auto'; }
   localStorage.setItem(THEME_KEY, mode);
-
   const label = mode==='auto' ? '🌓 Auto' : (mode==='light'?'☀️ Light':'🌙 Dark');
   const sub   = mode==='auto' ? 'OS設定に追従' : (mode==='light'?'ライト固定':'ダーク固定');
   const btnTop = document.getElementById('themeBtnTop');
@@ -39,20 +43,19 @@ function cycleTheme(){
   applyTheme(next);
 }
 
-// ===== 保存 =====
+/* ===== 保存 ===== */
 function save(){
   localStorage.setItem("iv_players", JSON.stringify(players));
   localStorage.setItem("iv_matches", JSON.stringify(matches));
   localStorage.setItem("iv_hostName", hostName || "");
   localStorage.setItem("iv_hostMode", hostMode ? "1" : "0");
-  localStorage.setItem("iv_hunterOnlyQueue", JSON.stringify(hunterOnlyQueue));
+  localStorage.setItem(HUNTER_ROT_KEY, String(hunterOnlyRotIdx));
 }
 
-// ===== 初回マイグレーション =====
+/* ===== 初回マイグレーション ===== */
 (function migrate(){
   const now = Date.now();
   let changed = false;
-
   for(const p of players){
     if(!("joinTs" in p)){ p.joinTs = now; changed = true; }
     if(!("lastTs" in p)){ p.lastTs = null; changed = true; }
@@ -62,37 +65,27 @@ function save(){
     if(!("hCount" in p)){ p.hCount = 0; changed = true; }
     if(!("sAdj" in p)){ p.sAdj = 0; changed = true; }
     if(!("hAdj" in p)){ p.hAdj = 0; changed = true; }
-  }
 
-  // ★キュー初期化：空なら「ハンターのみ」を joinTs順で作る
-  if(!Array.isArray(hunterOnlyQueue)) hunterOnlyQueue = [];
-  if(hunterOnlyQueue.length === 0){
-    const ho = players
-      .filter(p=>p.pref==="hunter-only")
-      .slice()
-      .sort((a,b)=>(a.joinTs||0)-(b.joinTs||0))
-      .map(p=>p.name);
-    hunterOnlyQueue = ho;
-    if(ho.length>0) changed = true;
+    /* 旧データに survivor-only / hunter-only が入ってない場合も許容 */
+    const ok = new Set(["either","survivor","hunter","survivor-only","hunter-only"]);
+    if(!ok.has(p.pref)){ p.pref = "either"; changed = true; }
   }
-
   if(changed) save();
 })();
 
-// ===== util =====
+/* ===== util ===== */
 const $ = sel => document.querySelector(sel);
 function escapeHtml(s){return String(s).replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function tsToString(ts){const d=new Date(ts),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`}
-
 function prefLabel(p){
-  return p==='survivor'?'サバ希望'
-    : p==='hunter'?'ハンター希望'
-    : p==='survivor-only'?'サバイバーのみ'
-    : p==='hunter-only'?'ハンターのみ'
-    : '希望なし';
+  if(p==='survivor') return 'サバ希望';
+  if(p==='hunter') return 'ハンター希望';
+  if(p==='survivor-only') return 'サバイバーのみ';
+  if(p==='hunter-only') return 'ハンターのみ';
+  return '希望なし';
 }
 
-// ===== iOS/通知判定 =====
+/* ===== iOS/通知判定 ===== */
 function isIOS(){
   const ua = navigator.userAgent || '';
   const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -112,42 +105,7 @@ function openIOSGuide(){
   else alert('Safari → 共有 → 「ホーム画面に追加」でPWA化してください。PWA内で「通知を有効化」を押すと使えます。');
 }
 
-// ===== ★ハンターのみキュー整備 =====
-function rebuildHunterOnlyQueueIfNeeded(){
-  // 存在しない名前を排除＆prefが hunter-only 以外になったら外す
-  const alive = new Map(players.map(p=>[p.name,p]));
-  hunterOnlyQueue = (hunterOnlyQueue||[]).filter(n=>{
-    const p = alive.get(n);
-    return p && p.pref==="hunter-only";
-  });
-
-  // 新規に hunter-only になった人を末尾へ追加（joinTs順で綺麗にする）
-  const inQueue = new Set(hunterOnlyQueue);
-  const newcomers = players
-    .filter(p=>p.pref==="hunter-only" && !inQueue.has(p.name))
-    .slice()
-    .sort((a,b)=>(a.joinTs||0)-(b.joinTs||0))
-    .map(p=>p.name);
-  hunterOnlyQueue.push(...newcomers);
-}
-
-function moveHunterOnlyToBack(name){
-  const idx = hunterOnlyQueue.indexOf(name);
-  if(idx === -1) return;
-  hunterOnlyQueue.splice(idx,1);
-  hunterOnlyQueue.push(name);
-}
-
-function renameInHunterOnlyQueue(oldName, newName){
-  const idx = hunterOnlyQueue.indexOf(oldName);
-  if(idx !== -1) hunterOnlyQueue[idx] = newName;
-}
-
-function removeFromHunterOnlyQueue(name){
-  hunterOnlyQueue = (hunterOnlyQueue||[]).filter(n=>n!==name);
-}
-
-// ===== 再計算 =====
+/* ===== 再計算 ===== */
 function recomputeCountsFromMatches(rebuildTiming=false){
   players.forEach(p=>{ p.sCount=0; p.hCount=0; if(rebuildTiming) p.lastTs=null; });
   const idx = new Map(players.map((p,i)=>[p.name,i]));
@@ -167,76 +125,40 @@ function recomputeCountsFromMatches(rebuildTiming=false){
   }
 }
 
-// ===== 参加者操作 =====
+/* ===== 参加者操作 ===== */
 function addPlayer(){
   const name = ($("#nameInput").value||"").trim();
   const pref = $("#prefInput").value || "either";
   if(!name) return;
   if(players.some(p=>p.name===name)){ alert("同名の参加者がすでにいます"); return; }
-
   const now = Date.now();
   players.push({ name, sCount:0, hCount:0, sAdj:0, hAdj:0, pref, active:true, joinTs:now, lastTs:null });
-
-  // ★ hunter-only ならキューに追加（登録順）
-  if(pref === "hunter-only"){
-    rebuildHunterOnlyQueueIfNeeded();
-    if(!hunterOnlyQueue.includes(name)) hunterOnlyQueue.push(name);
-  }
-
   $("#nameInput").value="";
   recomputeCountsFromMatches(false);
   save(); render();
 }
-
 function toggleActive(i){ players[i].active=!players[i].active; save(); render(); }
 
-// 手動編集
+/* 手動編集 */
 function editName(i, val){
   const v = (val||"").trim(); if(!v) return;
   if(players.some((p,pi)=>pi!==i && p.name===v)){alert("同名は使えません"); render(); return;}
-  const old = players[i].name;
-  players[i].name = v;
-
+  const old = players[i].name; players[i].name = v;
   if(selectedNames.has(old)){ selectedNames.delete(old); selectedNames.add(v); }
-
-  // 履歴内の名前を差し替え
   for(const m of matches){
     if(m.hunter===old) m.hunter=v;
     m.survivors = m.survivors.map(s=>s===old?v:s);
   }
-
-  // 主催者名も追従
   if(hostName === old){ hostName = v; }
-
-  // ★ hunter-only queue も追従
-  renameInHunterOnlyQueue(old, v);
-
   recomputeCountsFromMatches(true); save(); render();
 }
-
-function editPref(i, val){
-  const p = players[i];
-  const oldPref = p.pref;
-  p.pref = val;
-
-  // ★ hunter-only queue 更新
-  if(oldPref === "hunter-only" && val !== "hunter-only"){
-    removeFromHunterOnlyQueue(p.name);
-  }
-  if(oldPref !== "hunter-only" && val === "hunter-only"){
-    rebuildHunterOnlyQueueIfNeeded();
-    if(!hunterOnlyQueue.includes(p.name)) hunterOnlyQueue.push(p.name);
-  }
-
-  save(); render();
-}
-
+function editPref(i, val){ players[i].pref = val; save(); render(); }
 function incS(i){ players[i].sAdj = (players[i].sAdj||0) + 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
 function decS(i){ players[i].sAdj = (players[i].sAdj||0) - 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
 function incH(i){ players[i].hAdj = (players[i].hAdj||0) + 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
 function decH(i){ players[i].hAdj = (players[i].hAdj||0) - 1; recomputeCountsFromMatches(false); save(); renderTablesOnly(); }
 
-// 主催者モード
+/* 主催者モード */
 function toggleHostMode(){
   hostMode = $("#hostModeToggle").checked;
   if(hostMode && (!hostName || !players.some(p=>p.name===hostName))){
@@ -260,14 +182,9 @@ function setHost(name){
 function removePlayer(i){
   const p = players[i]; if(!p) return;
   if(!confirm(`「${p.name}」を完全削除します。\n・名簿から削除\n・関与する試合を履歴から削除\n・残り履歴から回数/待機情報を再計算`)) return;
-
   const removed = p.name;
   players.splice(i,1);
   selectedNames.delete(removed);
-
-  // ★ hunter-only queue からも削除
-  removeFromHunterOnlyQueue(removed);
-
   if(hostName === removed){
     hostName = "";
     hostMode = false;
@@ -275,7 +192,7 @@ function removePlayer(i){
   cleanupMatchesAndRecompute();
 }
 
-// 一括削除
+/* 一括削除 */
 function toggleSelect(i){
   const name = players[i].name;
   if(selectedNames.has(name)) selectedNames.delete(name); else selectedNames.add(name);
@@ -297,13 +214,8 @@ function bulkDeleteSelected(){
   const names = Array.from(selectedNames);
   const preview = names.slice(0,20).join("、 ") + (names.length>20 ? " ほか…" : "");
   if(!confirm(`選択した ${names.length} 名を完全削除します。\n（履歴からも該当試合を削除し、再計算します）\n\n対象: ${preview}`)) return;
-
   const removeSet = new Set(names);
   players = players.filter(p=>!removeSet.has(p.name));
-
-  // ★ hunter-only queue から削除
-  hunterOnlyQueue = (hunterOnlyQueue||[]).filter(n=>!removeSet.has(n));
-
   if(hostName && !players.some(p=>p.name===hostName)){
     hostName = "";
     hostMode = false;
@@ -320,9 +232,6 @@ function cleanupMatchesAndRecompute(){
     for(const s of m.survivors) if(!alive.has(s)) return false;
     return true;
   });
-
-  rebuildHunterOnlyQueueIfNeeded();
-
   recomputeCountsFromMatches(true); save(); render();
 }
 function updateSelectionUI(){
@@ -331,7 +240,7 @@ function updateSelectionUI(){
   renderTablesOnly();
 }
 
-// 2試合同時
+/* 2試合同時 */
 function toggleDual(){ dualMode = $("#dualToggle").checked; $("#dualToggleDock").checked = dualMode; updateDualHint(); render(); }
 function toggleDualDock(){ dualMode = $("#dualToggleDock").checked; $("#dualToggle").checked = dualMode; updateDualHint(); render(); }
 function updateDualHint(){
@@ -343,7 +252,7 @@ function updateDualHint(){
   }else hint.textContent = "現在は1試合モードです";
 }
 
-// ===== 抽選ロジック（公平＋新規優先＋希望） =====
+/* ===== 抽選ロジック ===== */
 function priorityOrder(list){
   const now = Date.now();
   function key(p){
@@ -356,7 +265,7 @@ function priorityOrder(list){
     }
     const refTs = p.lastTs!=null ? p.lastTs : p.joinTs;
     const waitScore = (now - refTs) / (10*60*1000);
-    return {a, newcomerBoost, waitScore, name:p.name};
+    return {a, newcomerBoost, waitScore, name:p.name, joinTs:p.joinTs};
   }
   return list.slice().sort((a,b)=>{
     const ka=key(a), kb=key(b);
@@ -367,114 +276,168 @@ function priorityOrder(list){
   });
 }
 
-/**
- * ★ 役割割り当て（サバ4＋ハン1）
- * - survivor-only はハンター候補から除外
- * - hunter-only はサバ候補から原則除外
- *   ただし「サバ不足」の場合のみ hunter-only をサバに回して良い（要望）
- * - hunter-only が複数いても試合が組めるように：
- *   ハンター候補は「ローテーションキューの先頭」を優先しつつ、公平性スコアも加味
- */
+/* ハンターのみローテ用：アクティブな hunter-only を登録順で返す */
+function getActiveHunterOnlyByJoin(){
+  return players
+    .filter(p=>p.active && p.pref==='hunter-only')
+    .slice()
+    .sort((a,b)=>(a.joinTs||0)-(b.joinTs||0) || a.name.localeCompare(b.name));
+}
+
+/* ハンターのみローテ表示 */
+function renderHunterOnlyQueue(){
+  const box = document.getElementById("hunterOnlyQueue");
+  if(!box) return;
+  const arr = getActiveHunterOnlyByJoin();
+  if(arr.length===0){
+    box.textContent = "（ハンターのみのアクティブ参加者はいません）";
+    return;
+  }
+  const idx = arr.length ? (hunterOnlyRotIdx % arr.length) : 0;
+  const next = arr[idx]?.name;
+
+  const items = arr.map((p,i)=>{
+    const isNext = (p.name===next);
+    return `<span class="chip" style="margin:2px 6px 2px 0; ${isNext ? 'border-color:var(--primary);' : ''}">
+      ${escapeHtml(p.name)}${isNext ? '（次）' : ''}
+    </span>`;
+  }).join("");
+
+  box.innerHTML = `
+    <div class="muted" style="font-size:12px;margin-bottom:6px">次の候補： <b>${escapeHtml(next)}</b></div>
+    <div>${items}</div>
+  `;
+}
+
+/* ロール割当（希望/平均化/ハンターのみ制約） */
 function assignRoles(pool){
   const now = Date.now();
+  const activePool = pool.slice();
 
-  const total = (p)=>p.sCount + p.hCount;
+  /* サバ不足判定：サバ役に使える人数が足りないなら hunter-only もサバに解禁 */
+  const survivorEligible = (p)=> (p.pref !== 'hunter-only');
+  const survivorEligibleCount = activePool.filter(survivorEligible).length;
 
-  // ハンター適性（不足度）
+  const allowHunterOnlyAsSurvivor = (survivorEligibleCount < 4);
+
   function hunterLack(p){
-    const a = total(p);
+    const a = p.sCount + p.hCount;
     let s = (a/5) - p.hCount;
-    if(p.pref==='hunter' || p.pref==='hunter-only') s += 0.25;
-    if(p.pref==='survivor' || p.pref==='survivor-only') s -= 0.25;
+
+    if(p.pref==='hunter') s += 0.25;
+    if(p.pref==='survivor') s -= 0.15;
+    if(p.pref==='survivor-only') s -= 999;     /* 原則ハンター禁止 */
+    if(p.pref==='hunter-only') s += 999;       /* 原則ハンター最優先 */
+
     if(a===0) s += 0.15;
     return s + Math.random()*0.001;
   }
 
-  // サバ適性（不足度）
   function survivorLack(p){
-    const a = total(p);
+    const a = p.sCount + p.hCount;
     let s = (a*4/5) - p.sCount;
-    if(p.pref==='survivor' || p.pref==='survivor-only') s += 0.25;
+
+    if(p.pref==='survivor') s += 0.25;
     if(p.pref==='hunter') s -= 0.15;
+    if(p.pref==='hunter-only'){
+      /* 原則サバ禁止。ただしサバ不足の時だけ候補にする */
+      s += (allowHunterOnlyAsSurvivor ? 0.05 : -999);
+    }
+    if(p.pref==='survivor-only') s += 0.35;
+
     if(a===0) s += 0.15;
     return s + Math.random()*0.001;
   }
 
-  const hunterCandidates = pool.filter(p=>p.pref!=="survivor-only");
-  if(hunterCandidates.length===0) return null;
-
-  // ★ hunter-only ローテーション優先：キューの先頭が候補にいるなら強く優先
-  const queueHeadName = (hunterOnlyQueue||[])[0];
-  const queueHead = queueHeadName ? hunterCandidates.find(p=>p.name===queueHeadName) : null;
+  /* ① ハンター決定：hunter-only が複数なら登録順ローテを優先 */
+  const hunterOnlyInPool = activePool
+    .filter(p=>p.pref==='hunter-only')
+    .slice()
+    .sort((a,b)=>(a.joinTs||0)-(b.joinTs||0) || a.name.localeCompare(b.name));
 
   let hunter;
-  if(queueHead){
-    // ただし極端に不公平にならないよう、先頭 vs 他候補のスコア比較を少しだけ行う
-    const bestByScore = hunterCandidates.slice().sort((a,b)=>hunterLack(b)-hunterLack(a))[0];
-    // bestが大きく優位ならbest、そうでなければローテ先頭
-    hunter = (hunterLack(bestByScore) - hunterLack(queueHead) > 0.25) ? bestByScore : queueHead;
+
+  if(hunterOnlyInPool.length >= 1){
+    const allActiveHunterOnly = getActiveHunterOnlyByJoin();
+    if(allActiveHunterOnly.length > 0){
+      const start = hunterOnlyRotIdx % allActiveHunterOnly.length;
+      let picked = null;
+
+      /* ローテ順に pool 内に居る人を探す */
+      for(let k=0;k<allActiveHunterOnly.length;k++){
+        const cand = allActiveHunterOnly[(start + k) % allActiveHunterOnly.length];
+        if(hunterOnlyInPool.some(p=>p.name===cand.name)){
+          picked = cand;
+          hunterOnlyRotIdx = (start + k + 1) % allActiveHunterOnly.length; /* 次へ */
+          break;
+        }
+      }
+      if(picked){
+        hunter = activePool.find(p=>p.name===picked.name) || hunterOnlyInPool[0];
+      }else{
+        hunter = hunterOnlyInPool[0];
+      }
+    }else{
+      hunter = hunterOnlyInPool[0];
+    }
   }else{
-    hunter = hunterCandidates.slice().sort((a,b)=>hunterLack(b)-hunterLack(a))[0];
+    hunter = activePool.slice().sort((a,b)=>hunterLack(b)-hunterLack(a))[0];
   }
 
-  // サバ候補：原則 hunter-only は除外
-  let survivorCandidates = pool.filter(p=>p!==hunter && p.pref!=="hunter-only");
-  // ★ サバ不足なら hunter-only をサバに回してよい（要望）
-  if(survivorCandidates.length < 4){
-    const extra = pool.filter(p=>p!==hunter && p.pref==="hunter-only");
-    survivorCandidates = survivorCandidates.concat(extra);
-  }
-  // survivor-only はOK（むしろ歓迎）
-  const survivors = survivorCandidates.slice().sort((a,b)=>survivorLack(b)-survivorLack(a)).slice(0,4);
+  /* ② サバ決定 */
+  const others = activePool.filter(p=>p!==hunter);
 
-  if(survivors.length < 4) return null;
+  let survivors = others
+    .slice()
+    .sort((a,b)=>survivorLack(b)-survivorLack(a))
+    .filter(p=> allowHunterOnlyAsSurvivor ? true : p.pref!=='hunter-only')
+    .slice(0,4);
+
+  /* 万一4人未満なら、残りから埋める（最後の安全弁） */
+  if(survivors.length < 4){
+    const remain = others.filter(p=>!survivors.includes(p));
+    for(const p of remain){
+      if(survivors.length>=4) break;
+      survivors.push(p);
+    }
+  }
+
   return { hunter, survivors };
 }
 
-// 主催者考慮込み 1試合構築
+/* 主催者考慮込み 1試合構築 */
 function buildOneMatch(act){
   if(act.length < 5) return null;
 
   const hostEnabled = hostMode && hostName && act.some(p=>p.name===hostName);
   const prio = priorityOrder(act);
 
+  let pool;
+
   if(!hostEnabled){
-    const pool = prio.slice(0,5);
-    const res = assignRoles(pool);
-    if(!res) return null;
-    const now = Date.now();
-    return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
+    pool = prio.slice(0,5);
   }else{
     const hostP = prio.find(p=>p.name===hostName);
     const others = prio.filter(p=>p.name!==hostName);
     if(!hostP || others.length < 4) return null;
-
-    const pool = [hostP, ...others.slice(0,4)];
-    const res = assignRoles(pool);
-    if(!res) return null;
-    const now = Date.now();
-    return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
+    pool = [hostP, ...others.slice(0,4)];
   }
+
+  const res = assignRoles(pool);
+  const now = Date.now();
+  return { ts: now, hunter: res.hunter.name, survivors: res.survivors.map(p=>p.name) };
 }
 
 function pickNext(){
-  rebuildHunterOnlyQueueIfNeeded();
-
   const activePlayers = players.filter(p=>p.active);
   const actCount = activePlayers.length;
   updateDualHint();
 
   if(!dualMode || actCount < 10){
     const m = buildOneMatch(activePlayers);
-    if(!m){ alert("アクティブ参加者が5人以上必要です（ロール制約により不足している可能性もあります）"); return; }
-
+    if(!m){ alert("アクティブ参加者が5人以上必要です"); return; }
     matches.push(m);
     lastCreateCount = 1;
-
-    // ★ hunter-only のハンターなら末尾へ
-    if(players.some(p=>p.name===m.hunter && p.pref==="hunter-only")){
-      moveHunterOnlyToBack(m.hunter);
-    }
   }else{
     const prio = priorityOrder(activePlayers);
     if(prio.length < 10){ alert("アクティブが10人未満です"); return; }
@@ -501,50 +464,13 @@ function pickNext(){
 
     const mA = assignRoles(poolA);
     const mB = assignRoles(poolB);
-
-    if(!mA || !mB){
-      // 制約で組めないときは、フォールバック：上位から10人をシャッフルして何回か試す
-      const base = prio.slice(0, Math.min(prio.length, 14));
-      let found = null;
-
-      for(let t=0;t<18;t++){
-        const shuffled = base.slice().sort(()=>Math.random()-0.5);
-        const firstTen = shuffled.slice(0,10);
-        const A = [firstTen[0], firstTen[2], firstTen[4], firstTen[6], firstTen[8]];
-        const B = [firstTen[1], firstTen[3], firstTen[5], firstTen[7], firstTen[9]];
-        const tryA = assignRoles(A);
-        const tryB = assignRoles(B);
-        if(tryA && tryB){ found = {tryA, tryB}; break; }
-      }
-      if(!found){
-        alert("ロール制約（サバのみ/ハンのみ）により、2試合同時で組めませんでした。1試合モードで試してください。");
-        return;
-      }
-
-      const now = Date.now();
-      matches.push({ ts: now,   hunter: found.tryA.hunter.name, survivors: found.tryA.survivors.map(p=>p.name) });
-      matches.push({ ts: now+1, hunter: found.tryB.hunter.name, survivors: found.tryB.survivors.map(p=>p.name) });
-    }else{
-      const now = Date.now();
-      matches.push({ ts: now,   hunter: mA.hunter.name, survivors: mA.survivors.map(p=>p.name) });
-      matches.push({ ts: now+1, hunter: mB.hunter.name, survivors: mB.survivors.map(p=>p.name) });
-    }
-
+    const now = Date.now();
+    matches.push({ ts: now,   hunter: mA.hunter.name, survivors: mA.survivors.map(p=>p.name) });
+    matches.push({ ts: now+1, hunter: mB.hunter.name, survivors: mB.survivors.map(p=>p.name) });
     lastCreateCount = 2;
-
-    // ★ hunter-only のハンターが含まれていたら、その都度末尾へ（A→B順）
-    const last = matches[matches.length-1];
-    const second = matches[matches.length-2];
-    [second, last].forEach(mm=>{
-      if(mm && players.some(p=>p.name===mm.hunter && p.pref==="hunter-only")){
-        moveHunterOnlyToBack(mm.hunter);
-      }
-    });
   }
 
-  recomputeCountsFromMatches(true);
-  save();
-  render();
+  recomputeCountsFromMatches(true); save(); render();
 
   const last = matches[matches.length-1];
   const second = matches[matches.length-2];
@@ -564,7 +490,7 @@ function undoLastMatch(){
   broadcastOverlayState();
 }
 
-// 手動登録
+/* 手動登録 */
 function toggleManual(){ manualMode = $("#manualToggle").checked; $("#manualPanel").style.display = manualMode ? "block" : "none"; render(); }
 function fillManualSelectors(){
   const opts = players.map(p=>`<option>${escapeHtml(p.name)}</option>`).join("");
@@ -580,10 +506,7 @@ function addManualMatch(){
   matches.push({ ts: Date.now(), hunter: h, survivors: surv });
   lastCreateCount = 1;
 
-  // ★ hunter-only が手動でもハンターなら末尾へ
-  const hp = players.find(p=>p.name===h);
-  if(hp && hp.pref==="hunter-only") moveHunterOnlyToBack(h);
-
+  /* 手動追加でもローテは進めない（登録順ローテは「確定抽選でハンターのみをハンターに割り当てた時」優先） */
   recomputeCountsFromMatches(true); save(); render();
   broadcastOverlayState();
   const m = matches[matches.length-1]; if (m) notifyLatestLineup(m);
@@ -595,16 +518,14 @@ function deleteMatch(idx){
   broadcastOverlayState();
 }
 
-// レンダリング
+/* ===== レンダリング ===== */
 function render(){
-  rebuildHunterOnlyQueueIfNeeded();
-
   renderTablesOnly();
-  renderHunterOnlyQueue(); // ★追加
   updateDualHint();
   updateLastMatchView();
   renderHistory();
   renderHostControls();
+  renderHunterOnlyQueue();
   if(manualMode) fillManualSelectors();
   $("#year").textContent = new Date().getFullYear();
   $("#selCount").textContent = selectedNames.size;
@@ -612,7 +533,6 @@ function render(){
   $("#dualToggle").checked = dualMode;
   broadcastOverlayState();
 }
-
 function renderHostControls(){
   const sel = $("#hostSelect");
   const chk = $("#hostModeToggle");
@@ -629,7 +549,6 @@ function renderHostControls(){
   sel.innerHTML = options;
   chk.checked = hostMode && !!hostName;
 }
-
 function renderTablesOnly(){
   const tbody = $("#playerTbody"); tbody.innerHTML="";
   const now = Date.now();
@@ -659,8 +578,8 @@ function renderTablesOnly(){
 
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td><input type="checkbox" ${selectedNames.has(p.name)?"checked":""} onchange="toggleSelect(${i})" aria-label="選択" /></td>
-      <td>
+      <td data-label="選択"><input type="checkbox" ${selectedNames.has(p.name)?"checked":""} onchange="toggleSelect(${i})" aria-label="選択" /></td>
+      <td data-label="名前（✓=アクティブ）">
         <label class="row" style="gap:6px">
           <input type="checkbox" ${p.active?"checked":""} onchange="toggleActive(${i})" aria-label="アクティブ切替">
           ${nameCell}
@@ -668,10 +587,10 @@ function renderTablesOnly(){
         </label>
         <div class="muted" style="font-size:12px;margin-left:26px">待機：約${waitMin}分</div>
       </td>
-      <td class="num">${manualMode? manualControlsS : p.sCount}</td>
-      <td class="num">${manualMode? manualControlsH : p.hCount}</td>
-      <td class="num"><b>${a}</b></td>
-      <td>
+      <td class="num" data-label="サバ">${manualMode? manualControlsS : p.sCount}</td>
+      <td class="num" data-label="ハン">${manualMode? manualControlsH : p.hCount}</td>
+      <td class="num" data-label="合計"><b>${a}</b></td>
+      <td data-label="希望">
         ${manualMode
           ? `<select onchange="editPref(${i}, this.value)" aria-label="希望選択">
                <option value="either" ${p.pref==='either'?'selected':''}>希望なし</option>
@@ -682,7 +601,7 @@ function renderTablesOnly(){
              </select>`
           : escapeHtml(prefLabel(p.pref))}
       </td>
-      <td><button class="btn btn-danger tiny" onclick="removePlayer(${i})">削除</button></td>
+      <td data-label="操作"><button class="btn btn-danger tiny" onclick="removePlayer(${i})">削除</button></td>
     `;
     tbody.appendChild(row);
   });
@@ -693,7 +612,6 @@ function renderTablesOnly(){
   $("#selCount").textContent = selectedNames.size;
   $("#masterSelect").checked = selectedNames.size>0 && selectedNames.size===players.length;
 }
-
 function updateLastMatchView(){
   const a = $("#lastMatchA");
   const b = $("#lastMatchB");
@@ -704,7 +622,6 @@ function updateLastMatchView(){
   const last = matches[matches.length-1];
   const second = matches[matches.length-2];
   const showTwo = second && Math.abs((last.ts||0) - (second.ts||0)) <= 2000;
-
   function htmlFor(m){
     return `
       <div class="lastTitle">${tsToString(m.ts)}</div>
@@ -716,7 +633,6 @@ function updateLastMatchView(){
   if(showTwo){ b.style.display = "block"; b.innerHTML = htmlFor(second); }
   else{ b.style.display = "none"; }
 }
-
 function renderHistory(){
   const list = $("#historyList"); list.innerHTML="";
   for(let i=matches.length-1;i>=0;i--){
@@ -734,31 +650,7 @@ function renderHistory(){
   }
 }
 
-// ★追加：ハンターのみローテーション表示
-function renderHunterOnlyQueue(){
-  const wrap = document.getElementById("hunterOnlyQueue");
-  if(!wrap) return;
-
-  rebuildHunterOnlyQueueIfNeeded();
-
-  // アクティブの hunter-only をキュー順で表示
-  const activeSet = new Set(players.filter(p=>p.active && p.pref==="hunter-only").map(p=>p.name));
-  const display = (hunterOnlyQueue||[]).filter(n=>activeSet.has(n));
-
-  if(display.length===0){
-    wrap.innerHTML = `<span class="muted">該当者はいません</span>`;
-    return;
-  }
-
-  wrap.innerHTML = display.map((name, i)=>`
-    <span class="queue-chip">
-      <span class="qnum">${i+1}</span>
-      <span><b>${escapeHtml(name)}</b></span>
-    </span>
-  `).join("");
-}
-
-// CSV
+/* ===== CSV ===== */
 function exportCSV(){
   const header=["name","active","survivor_count","hunter_count","pref","joinTs","lastTs","sAdj","hAdj"];
   const lines=[header.join(",")];
@@ -773,17 +665,13 @@ function exportCSV(){
 }
 function csvEsc(t){t=String(t);return /[",\n]/.test(t)?'"'+t.replaceAll('"','""')+'"':t}
 
-// 初期化
+/* ===== 初期化 ===== */
 window.addEventListener("DOMContentLoaded", ()=>{
   applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
   recomputeCountsFromMatches(true);
   $("#manualToggle").checked = manualMode;
   $("#dualToggle").checked = dualMode;
   $("#dualToggleDock").checked = dualMode;
-
-  rebuildHunterOnlyQueueIfNeeded();
-  save();
-
   render();
   $("#year").textContent = new Date().getFullYear();
 
@@ -802,7 +690,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   }catch(_e){}
 });
 
-// ===== 配信用オーバーレイ =====
+/* ===== 配信用オーバーレイ ===== */
 const overlayChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('iv_overlay') : null;
 
 function getOverlayMatches(){
@@ -812,13 +700,11 @@ function getOverlayMatches(){
   const two = second && Math.abs((last.ts||0)-(second.ts||0))<=2000;
   return two ? [second,last] : [last];
 }
-
 function broadcastOverlayState(){
   if(!overlayChannel) return;
   const items = getOverlayMatches().map(m=>({ ts:m.ts, hunter:m.hunter, survivors:m.survivors }));
   overlayChannel.postMessage({type:'state', payload:{ t:Date.now(), items }});
 }
-
 function openOverlay(){
   const url = new URL(location.href);
   url.searchParams.set('overlay','1');
@@ -850,17 +736,13 @@ function openOverlay(){
   document.title = '対戦リスト（配信用）';
 
   function refreshMatchesFromStorage(){
-    try{
-      matches = JSON.parse(localStorage.getItem('iv_matches') || '[]');
-    }catch(_e){}
+    try{ matches = JSON.parse(localStorage.getItem('iv_matches') || '[]'); }catch(_e){}
   }
-
   function renderOverlayFromLocal(){
     refreshMatchesFromStorage();
     const items = getOverlayMatches();
     renderOverlay(items);
   }
-
   function renderOverlay(items){
     const wrap = document.getElementById('ovWrap');
     if(!wrap) return;
@@ -886,10 +768,8 @@ function openOverlay(){
     });
   }
 
-  // 初回描画（ローカルストレージから）
   renderOverlayFromLocal();
 
-  // BroadcastChannel 経由で即時更新
   if(overlayChannel){
     overlayChannel.onmessage = (ev)=>{
       if(!ev || !ev.data || ev.data.type!=='state') return;
@@ -897,22 +777,17 @@ function openOverlay(){
       renderOverlay(items.map(x=>({ts:x.ts, hunter:x.hunter, survivors:x.survivors})));
     };
   }
-
-  // 他ウィンドウから localStorage が更新されたときにも追従
   window.addEventListener('storage', (e)=>{
-    if(e.key === 'iv_matches'){
-      renderOverlayFromLocal();
-    }
+    if(e.key === 'iv_matches'){ renderOverlayFromLocal(); }
   });
-
-  // 念のため数秒おきに同期（file:で storage イベントが飛ばないケース対策）
   setInterval(()=>{ try{ renderOverlayFromLocal(); }catch(_e){} }, 5000);
 })();
 
-// ===== 通知（SW登録・権限・送信） =====
+/* ===== 通知（SW登録・権限・送信） ===== */
 (async function registerSW(){
   if ('serviceWorker' in navigator) {
-    try { await navigator.serviceWorker.register('./sw.js'); } catch(e) { console.warn('Service Worker 登録失敗', e); }
+    try { await navigator.serviceWorker.register('./sw.js'); }
+    catch(e) { console.warn('Service Worker 登録失敗', e); }
   }
 })();
 
@@ -958,3 +833,4 @@ async function notifyLatestLineup(matchesForNotify){
     if (mini) mini.textContent = body.replace(/\n/g, ' | ').replace(/S: /g, 'S:');
   }catch(e){ console.warn('通知エラー', e); }
 }
+
